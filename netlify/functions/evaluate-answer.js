@@ -28,6 +28,20 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // Debug: Check if API key is available
+    if (!process.env.CLAUDE_API_KEY) {
+      console.error('CLAUDE_API_KEY environment variable is not set');
+      return {
+        statusCode: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({ 
+          error: 'API key configuration error. Please check environment variables.' 
+        })
+      };
+    }
+
     const prompt = `You are evaluating a UX designer's response to a scenario. Analyze their thinking and provide constructive feedback.
 
 SCENARIO:
