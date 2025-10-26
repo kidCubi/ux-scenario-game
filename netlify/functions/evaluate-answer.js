@@ -42,6 +42,20 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // Debug: Check API key format
+    if (!process.env.CLAUDE_API_KEY.startsWith('sk-ant-')) {
+      console.error('CLAUDE_API_KEY format appears invalid');
+      return {
+        statusCode: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({ 
+          error: 'API key format error. Claude API keys should start with sk-ant-' 
+        })
+      };
+    }
+
     const prompt = `You are evaluating a UX designer's response to a scenario. Analyze their thinking and provide constructive feedback.
 
 SCENARIO:
@@ -94,14 +108,21 @@ Keep feedback encouraging but honest for genuine responses. For low-effort respo
     };
 
   } catch (error) {
-    console.error('Error calling Claude API:', error);
+    console.error('Error calling Claude API:', error.response?.data || error.message);
+    
+    // Return more specific error information
+    const errorMessage = error.response?.status === 401 
+      ? 'Authentication failed. API key may be invalid or missing.'
+      : error.response?.data?.error?.message || 'Failed to get feedback. Please try again.';
+    
     return {
-      statusCode: 500,
+      statusCode: error.response?.status || 500,
       headers: {
         'Access-Control-Allow-Origin': '*'
       },
       body: JSON.stringify({ 
-        error: 'Failed to get feedback. Please try again.' 
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? error.response?.data : undefined
       })
     };
   }
