@@ -24,13 +24,35 @@ const Question = () => {
   const [submitted, setSubmitted] = useState(false);
   
   useEffect(() => {
-    if (!selectedQuestions.length || questionNumber - 1 !== currentQuestionIndex) {
+    // Only redirect if we have no questions selected, or if we're way off from expected index
+    const expectedIndex = questionNumber - 1;
+    const indexDiff = Math.abs(expectedIndex - currentQuestionIndex);
+    
+    if (!selectedQuestions.length || indexDiff > 1) {
       navigate('/');
     }
+    
+    // Reset local state when moving to a new question
     if (userAnswers[currentQuestionIndex] && feedback[currentQuestionIndex]) {
+      // Question already answered - show previous answer and mark as submitted
       setAnswer(userAnswers[currentQuestionIndex]);
       setSubmitted(true);
+    } else {
+      // New question - reset state
+      setAnswer('');
+      setSubmitted(false);
+      setError('');
+      setLoading(false);
     }
+    
+    console.log('Validation check:', {
+      questionNumber,
+      currentQuestionIndex,
+      expectedIndex,
+      indexDiff,
+      selectedQuestionsLength: selectedQuestions.length,
+      shouldRedirect: !selectedQuestions.length || indexDiff > 1
+    });
   }, [selectedQuestions, questionNumber, currentQuestionIndex, navigate, userAnswers, feedback]);
 
   const currentScenario = selectedQuestions[currentQuestionIndex];
@@ -60,7 +82,10 @@ const Question = () => {
       navigate('/results');
     } else {
       nextQuestion();
-      navigate(`/question/${questionNumber + 1}`);
+      // Use setTimeout to ensure state update completes before navigation
+      setTimeout(() => {
+        navigate(`/question/${questionNumber + 1}`);
+      }, 0);
     }
   };
 
