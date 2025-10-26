@@ -14,6 +14,7 @@ const Landing = () => {
   const [showWelcomeExpectedModal, setShowWelcomeExpectedModal] = useState(false);
   const [welcomeModalZIndex, setWelcomeModalZIndex] = useState(2000);
   const [welcomeExpectedModalZIndex, setWelcomeExpectedModalZIndex] = useState(2000);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   // Game state (moved from AppContext usage)
   const [selectedQuestions, setSelectedQuestions] = useState([]);
@@ -79,6 +80,14 @@ const Landing = () => {
 
   const handleStart = () => {
     initializeQuestionGame();
+  };
+
+  const handleDemoMode = () => {
+    // Set up demo data for results page using the context
+    initializeGame();
+    // We'll need to use the context methods to populate demo data
+    // For now, let's navigate and let the user see the empty state
+    navigate('/results');
   };
 
   const addAnswer = (answer) => {
@@ -400,6 +409,24 @@ const Landing = () => {
     }
   }, [currentQuestionIndex, userAnswers, feedback]);
 
+  // Update time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Format time in Windows 95 style (12-hour format with AM/PM)
+  const formatTime = (date) => {
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
   const handleIconClick = (iconName) => {
     setActiveIcon(iconName);
     if (iconName === 'welcome') {
@@ -473,6 +500,19 @@ const Landing = () => {
 
       <div style={styles.taskbar}>
         <div style={styles.taskbarInner}>
+          <div style={styles.taskbarLeft}>
+            <button 
+              style={styles.demoButton}
+              onClick={handleDemoMode}
+            >
+              Demo Mode
+            </button>
+          </div>
+          <div style={styles.taskbarRight}>
+            <div style={styles.clock}>
+              {formatTime(currentTime)}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -780,6 +820,19 @@ const Landing = () => {
           {/* Bottom Bar for Questions */}
           <div style={styles.bottomBar}>
             <div style={styles.bottomBarInner}>
+              <div style={styles.taskbarLeft}>
+                <button 
+                  style={styles.demoButton}
+                  onClick={handleDemoMode}
+                >
+                  Demo Mode
+                </button>
+              </div>
+              <div style={styles.taskbarRight}>
+                <div style={styles.clock}>
+                  {formatTime(currentTime)}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -864,7 +917,48 @@ const styles = {
   },
   taskbarInner: {
     display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%'
+  },
+  taskbarLeft: {
+    display: 'flex',
+    alignItems: 'center',
     gap: '8px'
+  },
+  taskbarRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  clock: {
+    backgroundColor: '#d6d6d6',
+    border: '2px inset',
+    borderTopColor: '#999999',
+    borderLeftColor: '#999999',
+    borderBottomColor: '#fafafa',
+    borderRightColor: '#fafafa',
+    padding: '4px 8px',
+    fontSize: '14px',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif',
+    color: '#000000',
+    minWidth: '65px',
+    textAlign: 'center',
+    userSelect: 'none'
+  },
+  demoButton: {
+    backgroundColor: '#d6d6d6',
+    border: '2px solid',
+    borderTopColor: '#fcf9fb',
+    borderLeftColor: '#fcf9fb',
+    borderBottomColor: '#333331',
+    borderRightColor: '#333331',
+    padding: '4px 8px',
+    fontSize: '14px',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif',
+    color: '#000000',
+    cursor: 'pointer',
+    userSelect: 'none'
   },
   taskbarButton: {
     backgroundColor: '#d6d6d6',
@@ -1048,7 +1142,9 @@ const styles = {
   },
   bottomBarInner: {
     display: 'flex',
-    gap: '8px'
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%'
   },
   bottomButton: {
     backgroundColor: '#d6d6d6',
