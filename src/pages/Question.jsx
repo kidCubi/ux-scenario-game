@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { evaluateAnswer } from '../services/claudeApi';
 import Button from '../components/Button';
+import Window95Modal from '../components/Window95Modal';
 
 const Question = () => {
   const navigate = useNavigate();
@@ -22,7 +23,295 @@ const Question = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [showExpectedModal, setShowExpectedModal] = useState(false);
+  const [modalZIndex, setModalZIndex] = useState(2000);
+
+  // Drag and resize state for each panel
+  const [questionPanel, setQuestionPanel] = useState({ 
+    position: null, 
+    size: { width: 431, height: null },
+    isDragging: false, 
+    isResizing: false,
+    resizeDirection: null,
+    dragStart: { x: 0, y: 0 }, 
+    zIndex: 1000 
+  });
+  const [answerPanel, setAnswerPanel] = useState({ 
+    position: null, 
+    size: { width: 431, height: null },
+    isDragging: false, 
+    isResizing: false,
+    resizeDirection: null,
+    dragStart: { x: 0, y: 0 }, 
+    zIndex: 1001 
+  });
+  const [feedbackPanel, setFeedbackPanel] = useState({ 
+    position: null, 
+    size: { width: 431, height: null },
+    isDragging: false, 
+    isResizing: false,
+    resizeDirection: null,
+    dragStart: { x: 0, y: 0 }, 
+    zIndex: 1002 
+  });
   
+  const questionPanelRef = useRef(null);
+  const answerPanelRef = useRef(null);
+  const feedbackPanelRef = useRef(null);
+
+  // Z-index management
+  const bringToFront = (panelType) => {
+    // Include modal in z-index calculation
+    const currentMaxZIndex = Math.max(questionPanel.zIndex, answerPanel.zIndex, feedbackPanel.zIndex, modalZIndex);
+    const newZIndex = currentMaxZIndex + 1;
+    
+    if (panelType === 'question') {
+      setQuestionPanel(prev => ({ ...prev, zIndex: newZIndex }));
+    } else if (panelType === 'answer') {
+      setAnswerPanel(prev => ({ ...prev, zIndex: newZIndex }));
+    } else if (panelType === 'feedback') {
+      setFeedbackPanel(prev => ({ ...prev, zIndex: newZIndex }));
+    } else if (panelType === 'modal') {
+      setModalZIndex(newZIndex);
+    }
+  };
+
+  // Resize handlers
+  const createResizeHandlers = (panelState, setPanelState, panelType) => {
+    const handleResizeMouseDown = (e, direction) => {
+      e.stopPropagation();
+      bringToFront(panelType);
+      
+      setPanelState(prev => ({
+        ...prev,
+        isResizing: true,
+        resizeDirection: direction,
+        dragStart: {
+          x: e.clientX,
+          y: e.clientY,
+          width: prev.size.width,
+          height: prev.size.height,
+          left: prev.position.x,
+          top: prev.position.y
+        }
+      }));
+    };
+
+    const handleResizeMouseMove = (e) => {
+      if (!panelState.isResizing) return;
+
+      const deltaX = e.clientX - panelState.dragStart.x;
+      const deltaY = e.clientY - panelState.dragStart.y;
+      const minWidth = 300;
+      const minHeight = 200;
+
+      let newWidth = panelState.dragStart.width;
+      let newHeight = panelState.dragStart.height;
+      let newX = panelState.dragStart.left;
+      let newY = panelState.dragStart.top;
+
+      switch (panelState.resizeDirection) {
+        case 'nw': // top-left
+          newWidth = Math.max(minWidth, panelState.dragStart.width - deltaX);
+          newHeight = Math.max(minHeight, panelState.dragStart.height - deltaY);
+          newX = panelState.dragStart.left + (panelState.dragStart.width - newWidth);
+          newY = panelState.dragStart.top + (panelState.dragStart.height - newHeight);
+          break;
+        case 'ne': // top-right
+          newWidth = Math.max(minWidth, panelState.dragStart.width + deltaX);
+          newHeight = Math.max(minHeight, panelState.dragStart.height - deltaY);
+          newY = panelState.dragStart.top + (panelState.dragStart.height - newHeight);
+          break;
+        case 'sw': // bottom-left
+          newWidth = Math.max(minWidth, panelState.dragStart.width - deltaX);
+          newHeight = Math.max(minHeight, panelState.dragStart.height + deltaY);
+          newX = panelState.dragStart.left + (panelState.dragStart.width - newWidth);
+          break;
+        case 'se': // bottom-right
+          newWidth = Math.max(minWidth, panelState.dragStart.width + deltaX);
+          newHeight = Math.max(minHeight, panelState.dragStart.height + deltaY);
+          break;
+      }
+
+      // Keep within viewport bounds
+      const maxX = window.innerWidth - newWidth;
+      const maxY = window.innerHeight - newHeight;
+      
+      setPanelState(prev => ({
+        ...prev,
+        position: {
+          x: Math.max(0, Math.min(newX, maxX)),
+          y: Math.max(0, Math.min(newY, maxY))
+        },
+        size: {
+          width: newWidth,
+          height: newHeight
+        }
+      }));
+    };
+
+    const handleResizeMouseUp = () => {
+      setPanelState(prev => ({ 
+        ...prev, 
+        isResizing: false, 
+        resizeDirection: null 
+      }));
+    };
+
+    return { handleResizeMouseDown, handleResizeMouseMove, handleResizeMouseUp };
+  };
+
+  // Drag handlers
+  const createDragHandlers = (panelState, setPanelState, panelRef, panelType) => {
+    const handleMouseDown = (e) => {
+      if (panelState.position && !panelState.isResizing) {
+        bringToFront(panelType);
+        setPanelState(prev => ({
+          ...prev,
+          isDragging: true,
+          dragStart: {
+            x: e.clientX - prev.position.x,
+            y: e.clientY - prev.position.y
+          }
+        }));
+      }
+    };
+
+    const handleMouseMove = (e) => {
+      if (!panelState.isDragging) return;
+      
+      const newX = e.clientX - panelState.dragStart.x;
+      const newY = e.clientY - panelState.dragStart.y;
+      
+      const maxX = window.innerWidth - panelState.size.width;
+      const maxY = window.innerHeight - panelState.size.height;
+      
+      setPanelState(prev => ({
+        ...prev,
+        position: {
+          x: Math.max(0, Math.min(newX, maxX)),
+          y: Math.max(0, Math.min(newY, maxY))
+        }
+      }));
+    };
+
+    const handleMouseUp = () => {
+      setPanelState(prev => ({ ...prev, isDragging: false }));
+    };
+
+    return { handleMouseDown, handleMouseMove, handleMouseUp };
+  };
+
+  const questionDragHandlers = createDragHandlers(questionPanel, setQuestionPanel, questionPanelRef, 'question');
+  const answerDragHandlers = createDragHandlers(answerPanel, setAnswerPanel, answerPanelRef, 'answer');
+  const feedbackDragHandlers = createDragHandlers(feedbackPanel, setFeedbackPanel, feedbackPanelRef, 'feedback');
+
+  const questionResizeHandlers = createResizeHandlers(questionPanel, setQuestionPanel, 'question');
+  const answerResizeHandlers = createResizeHandlers(answerPanel, setAnswerPanel, 'answer');
+  const feedbackResizeHandlers = createResizeHandlers(feedbackPanel, setFeedbackPanel, 'feedback');
+
+  // Mouse event listeners for dragging
+  useEffect(() => {
+    if (questionPanel.isDragging) {
+      document.addEventListener('mousemove', questionDragHandlers.handleMouseMove);
+      document.addEventListener('mouseup', questionDragHandlers.handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', questionDragHandlers.handleMouseMove);
+        document.removeEventListener('mouseup', questionDragHandlers.handleMouseUp);
+      };
+    }
+  }, [questionPanel.isDragging, questionPanel.dragStart]);
+
+  useEffect(() => {
+    if (answerPanel.isDragging) {
+      document.addEventListener('mousemove', answerDragHandlers.handleMouseMove);
+      document.addEventListener('mouseup', answerDragHandlers.handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', answerDragHandlers.handleMouseMove);
+        document.removeEventListener('mouseup', answerDragHandlers.handleMouseUp);
+      };
+    }
+  }, [answerPanel.isDragging, answerPanel.dragStart]);
+
+  useEffect(() => {
+    if (feedbackPanel.isDragging) {
+      document.addEventListener('mousemove', feedbackDragHandlers.handleMouseMove);
+      document.addEventListener('mouseup', feedbackDragHandlers.handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', feedbackDragHandlers.handleMouseMove);
+        document.removeEventListener('mouseup', feedbackDragHandlers.handleMouseUp);
+      };
+    }
+  }, [feedbackPanel.isDragging, feedbackPanel.dragStart]);
+
+  // Mouse event listeners for resizing
+  useEffect(() => {
+    if (questionPanel.isResizing) {
+      document.addEventListener('mousemove', questionResizeHandlers.handleResizeMouseMove);
+      document.addEventListener('mouseup', questionResizeHandlers.handleResizeMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', questionResizeHandlers.handleResizeMouseMove);
+        document.removeEventListener('mouseup', questionResizeHandlers.handleResizeMouseUp);
+      };
+    }
+  }, [questionPanel.isResizing, questionPanel.dragStart]);
+
+  useEffect(() => {
+    if (answerPanel.isResizing) {
+      document.addEventListener('mousemove', answerResizeHandlers.handleResizeMouseMove);
+      document.addEventListener('mouseup', answerResizeHandlers.handleResizeMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', answerResizeHandlers.handleResizeMouseMove);
+        document.removeEventListener('mouseup', answerResizeHandlers.handleResizeMouseUp);
+      };
+    }
+  }, [answerPanel.isResizing, answerPanel.dragStart]);
+
+  useEffect(() => {
+    if (feedbackPanel.isResizing) {
+      document.addEventListener('mousemove', feedbackResizeHandlers.handleResizeMouseMove);
+      document.addEventListener('mouseup', feedbackResizeHandlers.handleResizeMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', feedbackResizeHandlers.handleResizeMouseMove);
+        document.removeEventListener('mouseup', feedbackResizeHandlers.handleResizeMouseUp);
+      };
+    }
+  }, [feedbackPanel.isResizing, feedbackPanel.dragStart]);
+  
+  // Initialize panel positions and sizes after component mounts
+  useEffect(() => {
+    const initializePanelPositions = () => {
+      if (questionPanelRef.current && questionPanel.position === null) {
+        const rect = questionPanelRef.current.getBoundingClientRect();
+        setQuestionPanel(prev => ({ 
+          ...prev, 
+          position: { x: rect.left, y: rect.top },
+          size: { width: rect.width, height: rect.height }
+        }));
+      }
+      if (answerPanelRef.current && answerPanel.position === null) {
+        const rect = answerPanelRef.current.getBoundingClientRect();
+        setAnswerPanel(prev => ({ 
+          ...prev, 
+          position: { x: rect.left, y: rect.top },
+          size: { width: rect.width, height: rect.height }
+        }));
+      }
+      if (feedbackPanelRef.current && feedbackPanel.position === null) {
+        const rect = feedbackPanelRef.current.getBoundingClientRect();
+        setFeedbackPanel(prev => ({ 
+          ...prev, 
+          position: { x: rect.left, y: rect.top },
+          size: { width: rect.width, height: rect.height }
+        }));
+      }
+    };
+
+    // Small delay to ensure DOM is fully rendered
+    const timer = setTimeout(initializePanelPositions, 10);
+    return () => clearTimeout(timer);
+  }, [questionPanel.position, answerPanel.position, feedbackPanel.position]);
+
   useEffect(() => {
     // Only redirect if we have no questions selected, or if we're way off from expected index
     const expectedIndex = questionNumber - 1;
@@ -93,9 +382,31 @@ const Question = () => {
     <div style={styles.container}>
       <div style={styles.mainContent}>
         {/* Question Panel */}
-        <div style={styles.windowPanel}>
+        <div 
+          ref={questionPanelRef}
+          style={{
+            ...styles.windowPanel,
+            ...(questionPanel.position && {
+              position: 'fixed',
+              left: questionPanel.position.x,
+              top: questionPanel.position.y,
+              width: questionPanel.size.width,
+              height: questionPanel.size.height,
+              transform: 'none'
+            }),
+            cursor: questionPanel.isDragging ? 'grabbing' : 'default',
+            zIndex: questionPanel.zIndex
+          }}
+          onClick={() => bringToFront('question')}
+        >
           <div style={styles.windowInner}>
-            <div style={styles.titleBar}>
+            <div 
+              style={{
+                ...styles.titleBar,
+                cursor: 'grab'
+              }}
+              onMouseDown={questionDragHandlers.handleMouseDown}
+            >
               <h2 style={styles.titleText}>Question {questionNumber} of 5 - {currentScenario.category.toLowerCase()}</h2>
             </div>
             <div style={styles.windowContent}>
@@ -108,17 +419,52 @@ const Question = () => {
               <p style={styles.questionPrompt}>What do you do?</p>
             </div>
           </div>
+          {/* Resize handles */}
+          <div 
+            style={{...styles.resizeHandle, ...styles.resizeHandleNW}} 
+            onMouseDown={(e) => questionResizeHandlers.handleResizeMouseDown(e, 'nw')}
+          />
+          <div 
+            style={{...styles.resizeHandle, ...styles.resizeHandleNE}} 
+            onMouseDown={(e) => questionResizeHandlers.handleResizeMouseDown(e, 'ne')}
+          />
+          <div 
+            style={{...styles.resizeHandle, ...styles.resizeHandleSW}} 
+            onMouseDown={(e) => questionResizeHandlers.handleResizeMouseDown(e, 'sw')}
+          />
+          <div 
+            style={{...styles.resizeHandle, ...styles.resizeHandleSE}} 
+            onMouseDown={(e) => questionResizeHandlers.handleResizeMouseDown(e, 'se')}
+          />
         </div>
 
         {/* Answer Panel */}
-        <div style={styles.windowPanel}>
+        <div 
+          ref={answerPanelRef}
+          style={{
+            ...styles.windowPanel,
+            ...(answerPanel.position && {
+              position: 'fixed',
+              left: answerPanel.position.x,
+              top: answerPanel.position.y,
+              width: answerPanel.size.width,
+              height: answerPanel.size.height,
+              transform: 'none'
+            }),
+            cursor: answerPanel.isDragging ? 'grabbing' : 'default',
+            zIndex: answerPanel.zIndex
+          }}
+          onClick={() => bringToFront('answer')}
+        >
           <div style={styles.windowInner}>
-            <div style={styles.titleBar}>
+            <div 
+              style={{
+                ...styles.titleBar,
+                cursor: 'grab'
+              }}
+              onMouseDown={answerDragHandlers.handleMouseDown}
+            >
               <h2 style={styles.titleText}>Your answer - Notepad</h2>
-              <div style={styles.windowControls}>
-                <div style={styles.windowButton}>X</div>
-                <div style={styles.windowButton}>X</div>
-              </div>
             </div>
             <div style={styles.answerContent}>
               <textarea
@@ -144,16 +490,52 @@ const Question = () => {
               </div>
             )}
           </div>
+          {/* Resize handles */}
+          <div 
+            style={{...styles.resizeHandle, ...styles.resizeHandleNW}} 
+            onMouseDown={(e) => answerResizeHandlers.handleResizeMouseDown(e, 'nw')}
+          />
+          <div 
+            style={{...styles.resizeHandle, ...styles.resizeHandleNE}} 
+            onMouseDown={(e) => answerResizeHandlers.handleResizeMouseDown(e, 'ne')}
+          />
+          <div 
+            style={{...styles.resizeHandle, ...styles.resizeHandleSW}} 
+            onMouseDown={(e) => answerResizeHandlers.handleResizeMouseDown(e, 'sw')}
+          />
+          <div 
+            style={{...styles.resizeHandle, ...styles.resizeHandleSE}} 
+            onMouseDown={(e) => answerResizeHandlers.handleResizeMouseDown(e, 'se')}
+          />
         </div>
 
         {/* Feedback Panel - Always Shown */}
-        <div style={styles.windowPanel}>
+        <div 
+          ref={feedbackPanelRef}
+          style={{
+            ...styles.windowPanel,
+            ...(feedbackPanel.position && {
+              position: 'fixed',
+              left: feedbackPanel.position.x,
+              top: feedbackPanel.position.y,
+              width: feedbackPanel.size.width,
+              height: feedbackPanel.size.height,
+              transform: 'none'
+            }),
+            cursor: feedbackPanel.isDragging ? 'grabbing' : 'default',
+            zIndex: feedbackPanel.zIndex
+          }}
+          onClick={() => bringToFront('feedback')}
+        >
           <div style={styles.windowInner}>
-            <div style={styles.titleBar}>
+            <div 
+              style={{
+                ...styles.titleBar,
+                cursor: 'grab'
+              }}
+              onMouseDown={feedbackDragHandlers.handleMouseDown}
+            >
               <h2 style={styles.titleText}>Analyzer 3000</h2>
-              <div style={styles.windowControls}>
-                <div style={styles.windowButton}>X</div>
-              </div>
             </div>
             <div style={styles.windowContent}>
               {loading ? (
@@ -185,13 +567,38 @@ const Question = () => {
               </div>
             )}
           </div>
+          {/* Resize handles */}
+          <div 
+            style={{...styles.resizeHandle, ...styles.resizeHandleNW}} 
+            onMouseDown={(e) => feedbackResizeHandlers.handleResizeMouseDown(e, 'nw')}
+          />
+          <div 
+            style={{...styles.resizeHandle, ...styles.resizeHandleNE}} 
+            onMouseDown={(e) => feedbackResizeHandlers.handleResizeMouseDown(e, 'ne')}
+          />
+          <div 
+            style={{...styles.resizeHandle, ...styles.resizeHandleSW}} 
+            onMouseDown={(e) => feedbackResizeHandlers.handleResizeMouseDown(e, 'sw')}
+          />
+          <div 
+            style={{...styles.resizeHandle, ...styles.resizeHandleSE}} 
+            onMouseDown={(e) => feedbackResizeHandlers.handleResizeMouseDown(e, 'se')}
+          />
         </div>
       </div>
 
       {/* Bottom Bar */}
       <div style={styles.bottomBar}>
         <div style={styles.bottomBarInner}>
-          <button style={styles.bottomButton}>
+          <button 
+            style={styles.bottomButton}
+            onClick={() => {
+              setShowExpectedModal(true);
+              // Ensure modal appears on top when opened
+              const currentMaxZIndex = Math.max(questionPanel.zIndex, answerPanel.zIndex, feedbackPanel.zIndex, modalZIndex);
+              setModalZIndex(currentMaxZIndex + 1);
+            }}
+          >
             What's expected of me again?
           </button>
         </div>
@@ -205,6 +612,27 @@ const Question = () => {
               Retry
             </button>
           </div>
+        </div>
+      )}
+
+      {showExpectedModal && (
+        <div onClick={() => bringToFront('modal')}>
+          <Window95Modal
+            title="What's expected of me? - The Firm"
+            onClose={() => setShowExpectedModal(false)}
+            onBringToFront={() => bringToFront('modal')}
+            buttons={[
+              {
+                text: "OK",
+                onClick: () => setShowExpectedModal(false)
+              }
+            ]}
+            style={{ zIndex: modalZIndex }}
+          >
+            <p style={styles.modalText}>
+              [Title and content not defined yet]
+            </p>
+          </Window95Modal>
         </div>
       )}
     </div>
@@ -236,13 +664,15 @@ const styles = {
     maxHeight: '80vh',
     boxShadow: '2px 0 0 0 #fcf9fb inset, 0 2px 0 0 #fcf9fb inset, -2px 0 0 0 #333331 inset, 0 -2px 0 0 #333331 inset',
     display: 'flex',
-    flexDirection: 'column'
+    flexDirection: 'column',
+    position: 'relative'
   },
   windowInner: {
     display: 'flex',
     flexDirection: 'column',
     gap: '4px',
-    position: 'relative'
+    position: 'relative',
+    height: '100%'
   },
   titleBar: {
     backgroundColor: '#05007f',
@@ -280,7 +710,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
-    height: 'calc(80vh - 60px)',
+    flex: 1,
     overflowY: 'auto'
   },
   answerContent: {
@@ -289,7 +719,7 @@ const styles = {
     boxShadow: '2px 0 0 0 #999999 inset, 0 2px 0 0 #999999 inset, -2px 0 0 0 #fafafa inset, 0 -2px 0 0 #fafafa inset',
     display: 'flex',
     flexDirection: 'column',
-    height: 'calc(80vh - 60px)',
+    flex: 1,
     overflowY: 'auto'
   },
   scenarioTitle: {
@@ -314,7 +744,6 @@ const styles = {
   },
   textarea: {
     width: '100%',
-    minHeight: '400px',
     padding: '8px',
     fontSize: '18px',
     border: 'none',
@@ -322,7 +751,8 @@ const styles = {
     resize: 'none',
     fontFamily: 'W95Font, sans-serif',
     lineHeight: '1.4',
-    flexGrow: 1
+    flex: 1,
+    minHeight: 0
   },
   answerFooter: {
     backgroundColor: 'silver',
@@ -397,7 +827,8 @@ const styles = {
     right: 0,
     backgroundColor: '#d9d9d9',
     padding: '16px 20px',
-    boxShadow: '2px 0 0 0 #fcf9fb inset, 0 2px 0 0 #fcf9fb inset, -2px 0 0 0 #333331 inset, 0 -2px 0 0 #333331 inset'
+    boxShadow: '2px 0 0 0 #fcf9fb inset, 0 2px 0 0 #fcf9fb inset, -2px 0 0 0 #333331 inset, 0 -2px 0 0 #333331 inset',
+    zIndex: 500
   },
   bottomBarInner: {
     display: 'flex',
@@ -437,6 +868,39 @@ const styles = {
     cursor: 'pointer',
     marginTop: '10px',
     boxShadow: '2px 0 0 0 #fcf9fb inset, 0 2px 0 0 #fcf9fb inset, -2px 0 0 0 #333331 inset, 0 -2px 0 0 #333331 inset'
+  },
+  resizeHandle: {
+    position: 'absolute',
+    width: '20px',
+    height: '20px',
+    backgroundColor: 'transparent',
+    zIndex: 10
+  },
+  resizeHandleNW: {
+    top: '-10px',
+    left: '-10px',
+    cursor: 'nw-resize'
+  },
+  resizeHandleNE: {
+    top: '-10px',
+    right: '-10px',
+    cursor: 'ne-resize'
+  },
+  resizeHandleSW: {
+    bottom: '-10px',
+    left: '-10px',
+    cursor: 'sw-resize'
+  },
+  resizeHandleSE: {
+    bottom: '-10px',
+    right: '-10px',
+    cursor: 'se-resize'
+  },
+  modalText: {
+    fontSize: '18px',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif',
+    color: '#000000',
+    margin: 0
   }
 };
 

@@ -1,13 +1,113 @@
 import React, { useState, useRef } from 'react';
 
-const Window95Modal = ({ title, children, onClose, buttons = [] }) => {
+const Window95Modal = ({ title, children, onClose, buttons = [], style = {}, onBringToFront }) => {
   const [position, setPosition] = useState(null);
+  const [size, setSize] = useState({ width: 513, height: null });
   const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeDirection, setResizeDirection] = useState(null);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const windowRef = useRef(null);
 
+  // Resize handlers
+  const handleResizeMouseDown = (e, direction) => {
+    e.stopPropagation();
+    if (onBringToFront) {
+      onBringToFront();
+    }
+    
+    // Initialize position and size if not set
+    if (position === null || size.height === null) {
+      const rect = windowRef.current.getBoundingClientRect();
+      const currentPos = { x: rect.left, y: rect.top };
+      const currentSize = { width: rect.width, height: rect.height };
+      setPosition(currentPos);
+      setSize(currentSize);
+      setDragStart({
+        x: e.clientX,
+        y: e.clientY,
+        width: currentSize.width,
+        height: currentSize.height,
+        left: currentPos.x,
+        top: currentPos.y
+      });
+    } else {
+      setDragStart({
+        x: e.clientX,
+        y: e.clientY,
+        width: size.width,
+        height: size.height,
+        left: position.x,
+        top: position.y
+      });
+    }
+    
+    setIsResizing(true);
+    setResizeDirection(direction);
+  };
+
+  const handleResizeMouseMove = (e) => {
+    if (!isResizing) return;
+
+    const deltaX = e.clientX - dragStart.x;
+    const deltaY = e.clientY - dragStart.y;
+    const minWidth = 300;
+    const minHeight = 200;
+
+    let newWidth = dragStart.width;
+    let newHeight = dragStart.height;
+    let newX = dragStart.left;
+    let newY = dragStart.top;
+
+    switch (resizeDirection) {
+      case 'nw':
+        newWidth = Math.max(minWidth, dragStart.width - deltaX);
+        newHeight = Math.max(minHeight, dragStart.height - deltaY);
+        newX = dragStart.left + (dragStart.width - newWidth);
+        newY = dragStart.top + (dragStart.height - newHeight);
+        break;
+      case 'ne':
+        newWidth = Math.max(minWidth, dragStart.width + deltaX);
+        newHeight = Math.max(minHeight, dragStart.height - deltaY);
+        newY = dragStart.top + (dragStart.height - newHeight);
+        break;
+      case 'sw':
+        newWidth = Math.max(minWidth, dragStart.width - deltaX);
+        newHeight = Math.max(minHeight, dragStart.height + deltaY);
+        newX = dragStart.left + (dragStart.width - newWidth);
+        break;
+      case 'se':
+        newWidth = Math.max(minWidth, dragStart.width + deltaX);
+        newHeight = Math.max(minHeight, dragStart.height + deltaY);
+        break;
+    }
+
+    const maxX = window.innerWidth - newWidth;
+    const maxY = window.innerHeight - newHeight;
+    
+    setPosition({
+      x: Math.max(0, Math.min(newX, maxX)),
+      y: Math.max(0, Math.min(newY, maxY))
+    });
+    setSize({
+      width: newWidth,
+      height: newHeight
+    });
+  };
+
+  const handleResizeMouseUp = () => {
+    setIsResizing(false);
+    setResizeDirection(null);
+  };
+
   const handleMouseDown = (e) => {
     if (e.target.closest('button')) return; // Don't drag when clicking close button
+    if (isResizing) return; // Don't drag when resizing
+    
+    // Bring modal to front when starting to drag
+    if (onBringToFront) {
+      onBringToFront();
+    }
     
     // Initialize position from current DOM position if not set
     if (position === null) {
@@ -35,8 +135,8 @@ const Window95Modal = ({ title, children, onClose, buttons = [] }) => {
     const newY = e.clientY - dragStart.y;
     
     // Keep modal within viewport bounds
-    const maxX = window.innerWidth - (windowRef.current?.offsetWidth || 0);
-    const maxY = window.innerHeight - (windowRef.current?.offsetHeight || 0);
+    const maxX = window.innerWidth - (size.width || windowRef.current?.offsetWidth || 0);
+    const maxY = window.innerHeight - (size.height || windowRef.current?.offsetHeight || 0);
     
     setPosition({
       x: Math.max(0, Math.min(newX, maxX)),
@@ -59,21 +159,42 @@ const Window95Modal = ({ title, children, onClose, buttons = [] }) => {
     }
   }, [isDragging, dragStart]);
 
+  React.useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleResizeMouseMove);
+      document.addEventListener('mouseup', handleResizeMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleResizeMouseMove);
+        document.removeEventListener('mouseup', handleResizeMouseUp);
+      };
+    }
+  }, [isResizing, dragStart]);
+
   return (
-    <div style={styles.overlay}>
-      <div 
-        ref={windowRef}
-        style={{
-          ...styles.window,
-          ...(position && {
-            position: 'fixed',
-            left: position.x,
-            top: position.y,
-            transform: 'none'
-          }),
-          cursor: isDragging ? 'grabbing' : 'default'
-        }}
-      >
+    <div 
+      ref={windowRef}
+      style={{
+        ...styles.window,
+        ...(position ? {
+          position: 'fixed',
+          left: position.x,
+          top: position.y,
+          width: size.width,
+          height: size.height,
+          transform: 'none'
+        } : {
+          position: 'fixed',
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: size.width,
+          minHeight: 'auto'
+        }),
+        cursor: isDragging ? 'grabbing' : 'default',
+        zIndex: 2000,
+        ...style
+      }}
+    >
         <div 
           style={{
             ...styles.titleBar,
@@ -147,24 +268,29 @@ const Window95Modal = ({ title, children, onClose, buttons = [] }) => {
             ))}
           </div>
         )}
-      </div>
+        
+        {/* Resize handles */}
+        <div 
+          style={{...styles.resizeHandle, ...styles.resizeHandleNW}} 
+          onMouseDown={(e) => handleResizeMouseDown(e, 'nw')}
+        />
+        <div 
+          style={{...styles.resizeHandle, ...styles.resizeHandleNE}} 
+          onMouseDown={(e) => handleResizeMouseDown(e, 'ne')}
+        />
+        <div 
+          style={{...styles.resizeHandle, ...styles.resizeHandleSW}} 
+          onMouseDown={(e) => handleResizeMouseDown(e, 'sw')}
+        />
+        <div 
+          style={{...styles.resizeHandle, ...styles.resizeHandleSE}} 
+          onMouseDown={(e) => handleResizeMouseDown(e, 'se')}
+        />
     </div>
   );
 };
 
 const styles = {
-  overlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'transparent',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000
-  },
   window: {
     backgroundColor: '#c0c0c0',
     border: '2px solid',
@@ -245,6 +371,33 @@ const styles = {
     cursor: 'pointer',
     minWidth: '75px',
     color: '#000000'
+  },
+  resizeHandle: {
+    position: 'absolute',
+    width: '20px',
+    height: '20px',
+    backgroundColor: 'transparent',
+    zIndex: 10
+  },
+  resizeHandleNW: {
+    top: '-10px',
+    left: '-10px',
+    cursor: 'nw-resize'
+  },
+  resizeHandleNE: {
+    top: '-10px',
+    right: '-10px',
+    cursor: 'ne-resize'
+  },
+  resizeHandleSW: {
+    bottom: '-10px',
+    left: '-10px',
+    cursor: 'sw-resize'
+  },
+  resizeHandleSE: {
+    bottom: '-10px',
+    right: '-10px',
+    cursor: 'se-resize'
   }
 };
 
