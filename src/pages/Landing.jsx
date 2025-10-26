@@ -187,7 +187,10 @@ const Landing = () => {
 
   // Results functionality
   const getLevelColor = (level) => {
-    return '#17a2b8'; // Same turquoise/blue color for all levels
+    if (level.includes('Lead')) return '#28a745';
+    if (level.includes('Senior')) return '#17a2b8';
+    if (level.includes('Mid')) return '#ffc107';
+    return '#dc3545';
   };
 
   const toggleQuestion = (index) => {
@@ -844,7 +847,16 @@ const Landing = () => {
             style={{ zIndex: welcomeExpectedModalZIndex }}
           >
             <p style={styles.modalText}>
-              [Title and content not defined yet]
+              You'll answer a series of 5 questions based on scenarios that will put you in a tough position as a UX designer!
+            </p>
+            <p style={styles.modalText}>
+              But don't worry, there are no right or wrong answers. Each one of your answers will be analyzed by our system and give you useful tips on how to approach those situations.
+            </p>
+            <p style={styles.modalText}>
+              You'll get a global grade at the end, which is not indicative of your real performance as a person.
+            </p>
+            <p style={styles.modalText}>
+              Have fun!
             </p>
           </Window95Modal>
         </div>
@@ -1078,8 +1090,17 @@ const Landing = () => {
                 style={{ zIndex: modalZIndex }}
               >
                 <p style={styles.modalText}>
-                  [Title and content not defined yet]
-                </p>
+              You'll answer a series of 5 questions based on scenarios that will put you in a tough position as a UX designer!
+            </p>
+            <p style={styles.modalText}>
+              But don't worry, there are no right or wrong answers. Each one of your answers will be analyzed by our system and give you useful answers on how to approach those situations.
+            </p>
+            <p style={styles.modalText}>
+              You'll get a global grade at the end, which is not indicative of your real performance as a person.
+            </p>
+            <p style={styles.modalText}>
+              Have fun!
+            </p>
               </Window95Modal>
             </div>
           )}

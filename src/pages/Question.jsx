@@ -629,8 +629,17 @@ const Question = () => {
             ]}
             style={{ zIndex: modalZIndex }}
           >
+           <p style={styles.modalText}>
+              You'll answer a series of 5 questions based on scenarios that will put you in a tough position as a UX designer!
+            </p>
             <p style={styles.modalText}>
-              [Title and content not defined yet]
+              But don't worry, there are no right or wrong answers. Each one of your answers will be analyzed by our system and give you useful answers on how to approach those situations.
+            </p>
+            <p style={styles.modalText}>
+              You'll get a global grade at the end, which is not indicative of your real performance as a person.
+            </p>
+            <p style={styles.modalText}>
+              Have fun!
             </p>
           </Window95Modal>
         </div>
