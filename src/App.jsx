@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AppProvider } from './context/AppContext';
 import Landing from './pages/Landing';
 import Question from './pages/Question';
-import Results from './pages/Results';
 
 function App() {
   return (
@@ -12,7 +11,6 @@ function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/question/:number" element={<Question />} />
-          <Route path="/results" element={<Results />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Router>

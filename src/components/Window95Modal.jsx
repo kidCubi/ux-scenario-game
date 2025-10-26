@@ -1,12 +1,13 @@
 import React, { useState, useRef } from 'react';
 
-const Window95Modal = ({ title, children, onClose, buttons = [], style = {}, onBringToFront }) => {
+const Window95Modal = ({ title, children, onClose, buttons = [], style = {}, onBringToFront, questionData = null, questionsData = null }) => {
   const [position, setPosition] = useState(null);
   const [size, setSize] = useState({ width: 513, height: null });
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDirection, setResizeDirection] = useState(null);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const windowRef = useRef(null);
 
   // Resize handlers
@@ -148,6 +149,30 @@ const Window95Modal = ({ title, children, onClose, buttons = [], style = {}, onB
     setIsDragging(false);
   };
 
+  const handlePreviousQuestion = () => {
+    if (questionsData && currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    }
+  };
+
+  const handleNextQuestion = () => {
+    if (questionsData && currentQuestionIndex < questionsData.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    }
+  };
+
+  // Get current question data
+  const getCurrentQuestionData = () => {
+    if (questionsData && questionsData[currentQuestionIndex]) {
+      return questionsData[currentQuestionIndex];
+    }
+    return questionData;
+  };
+
+  const currentData = getCurrentQuestionData();
+  const totalQuestions = questionsData ? questionsData.length : 1;
+  const questionNumber = currentQuestionIndex + 1;
+
   React.useEffect(() => {
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove);
@@ -202,7 +227,9 @@ const Window95Modal = ({ title, children, onClose, buttons = [], style = {}, onB
           }}
           onMouseDown={handleMouseDown}
         >
-          <span style={styles.titleText}>{title}</span>
+          <span style={styles.titleText}>
+            {questionsData ? `Your responses - Question ${questionNumber}/${totalQuestions}` : title}
+          </span>
           <button
             style={styles.closeButton}
             onClick={onClose}
@@ -232,40 +259,147 @@ const Window95Modal = ({ title, children, onClose, buttons = [], style = {}, onB
           </button>
         </div>
         <div style={styles.content}>
-          {children}
+          {questionsData ? (
+            <div style={styles.questionBreakdown}>
+              <h4 style={styles.sectionTitle}>Your Answer:</h4>
+              <p style={styles.answerText}>{currentData?.answer || 'No answer data'}</p>
+              <h5 style={styles.feedbackTitle}>{currentData?.feedbackTitle || 'No feedback title'}</h5>
+              <p style={styles.feedbackText}>{currentData?.feedbackText || 'No feedback text'}</p>
+              {currentData?.additionalFeedback && (
+                <p style={styles.growthText}>{currentData.additionalFeedback}</p>
+              )}
+            </div>
+          ) : questionData && currentData ? (
+            <div style={styles.questionBreakdown}>
+              <h4 style={styles.sectionTitle}>Your Answer:</h4>
+              <p style={styles.answerText}>{currentData.answer}</p>
+              {currentData.strengths && (
+                <p style={styles.strengthsText}>{currentData.strengths}</p>
+              )}
+              {currentData.growthAreas && (
+                <p style={styles.growthText}>{currentData.growthAreas}</p>
+              )}
+              <h5 style={styles.feedbackTitle}>{currentData.feedbackTitle}</h5>
+              <p style={styles.feedbackText}>{currentData.feedbackText}</p>
+              {currentData.additionalFeedback && (
+                <p style={styles.growthText}>{currentData.additionalFeedback}</p>
+              )}
+            </div>
+          ) : (
+            children
+          )}
         </div>
-        {buttons.length > 0 && (
+        {(questionsData || buttons.length > 0) && (
           <div style={styles.buttonRow}>
-            {buttons.map((button, index) => (
-              <button
-                key={index}
-                style={styles.button}
-                onClick={button.onClick}
-                onMouseDown={(e) => {
-                  e.currentTarget.style.borderStyle = 'inset';
-                  e.currentTarget.style.borderTopColor = '#333331';
-                  e.currentTarget.style.borderLeftColor = '#333331';
-                  e.currentTarget.style.borderBottomColor = '#fcf9fb';
-                  e.currentTarget.style.borderRightColor = '#fcf9fb';
-                }}
-                onMouseUp={(e) => {
-                  e.currentTarget.style.borderStyle = 'solid';
-                  e.currentTarget.style.borderTopColor = '#fcf9fb';
-                  e.currentTarget.style.borderLeftColor = '#fcf9fb';
-                  e.currentTarget.style.borderBottomColor = '#333331';
-                  e.currentTarget.style.borderRightColor = '#333331';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderStyle = 'solid';
-                  e.currentTarget.style.borderTopColor = '#fcf9fb';
-                  e.currentTarget.style.borderLeftColor = '#fcf9fb';
-                  e.currentTarget.style.borderBottomColor = '#333331';
-                  e.currentTarget.style.borderRightColor = '#333331';
-                }}
-              >
-                {button.text}
-              </button>
-            ))}
+            {questionsData ? (
+              <>
+                <button
+                  style={{
+                    ...styles.button,
+                    ...(currentQuestionIndex === 0 ? styles.buttonDisabled : {})
+                  }}
+                  onClick={handlePreviousQuestion}
+                  disabled={currentQuestionIndex === 0}
+                  onMouseDown={(e) => {
+                    if (currentQuestionIndex > 0) {
+                      e.currentTarget.style.borderStyle = 'inset';
+                      e.currentTarget.style.borderTopColor = '#333331';
+                      e.currentTarget.style.borderLeftColor = '#333331';
+                      e.currentTarget.style.borderBottomColor = '#fcf9fb';
+                      e.currentTarget.style.borderRightColor = '#fcf9fb';
+                    }
+                  }}
+                  onMouseUp={(e) => {
+                    if (currentQuestionIndex > 0) {
+                      e.currentTarget.style.borderStyle = 'solid';
+                      e.currentTarget.style.borderTopColor = '#fcf9fb';
+                      e.currentTarget.style.borderLeftColor = '#fcf9fb';
+                      e.currentTarget.style.borderBottomColor = '#333331';
+                      e.currentTarget.style.borderRightColor = '#333331';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (currentQuestionIndex > 0) {
+                      e.currentTarget.style.borderStyle = 'solid';
+                      e.currentTarget.style.borderTopColor = '#fcf9fb';
+                      e.currentTarget.style.borderLeftColor = '#fcf9fb';
+                      e.currentTarget.style.borderBottomColor = '#333331';
+                      e.currentTarget.style.borderRightColor = '#333331';
+                    }
+                  }}
+                >
+                  Previous question
+                </button>
+                <button
+                  style={{
+                    ...styles.button,
+                    ...(currentQuestionIndex === totalQuestions - 1 ? styles.buttonDisabled : {})
+                  }}
+                  onClick={handleNextQuestion}
+                  disabled={currentQuestionIndex === totalQuestions - 1}
+                  onMouseDown={(e) => {
+                    if (currentQuestionIndex < totalQuestions - 1) {
+                      e.currentTarget.style.borderStyle = 'inset';
+                      e.currentTarget.style.borderTopColor = '#333331';
+                      e.currentTarget.style.borderLeftColor = '#333331';
+                      e.currentTarget.style.borderBottomColor = '#fcf9fb';
+                      e.currentTarget.style.borderRightColor = '#fcf9fb';
+                    }
+                  }}
+                  onMouseUp={(e) => {
+                    if (currentQuestionIndex < totalQuestions - 1) {
+                      e.currentTarget.style.borderStyle = 'solid';
+                      e.currentTarget.style.borderTopColor = '#fcf9fb';
+                      e.currentTarget.style.borderLeftColor = '#fcf9fb';
+                      e.currentTarget.style.borderBottomColor = '#333331';
+                      e.currentTarget.style.borderRightColor = '#333331';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (currentQuestionIndex < totalQuestions - 1) {
+                      e.currentTarget.style.borderStyle = 'solid';
+                      e.currentTarget.style.borderTopColor = '#fcf9fb';
+                      e.currentTarget.style.borderLeftColor = '#fcf9fb';
+                      e.currentTarget.style.borderBottomColor = '#333331';
+                      e.currentTarget.style.borderRightColor = '#333331';
+                    }
+                  }}
+                >
+                  Next question
+                </button>
+              </>
+            ) : (
+              buttons.map((button, index) => (
+                <button
+                  key={index}
+                  style={styles.button}
+                  onClick={button.onClick}
+                  onMouseDown={(e) => {
+                    e.currentTarget.style.borderStyle = 'inset';
+                    e.currentTarget.style.borderTopColor = '#333331';
+                    e.currentTarget.style.borderLeftColor = '#333331';
+                    e.currentTarget.style.borderBottomColor = '#fcf9fb';
+                    e.currentTarget.style.borderRightColor = '#fcf9fb';
+                  }}
+                  onMouseUp={(e) => {
+                    e.currentTarget.style.borderStyle = 'solid';
+                    e.currentTarget.style.borderTopColor = '#fcf9fb';
+                    e.currentTarget.style.borderLeftColor = '#fcf9fb';
+                    e.currentTarget.style.borderBottomColor = '#333331';
+                    e.currentTarget.style.borderRightColor = '#333331';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderStyle = 'solid';
+                    e.currentTarget.style.borderTopColor = '#fcf9fb';
+                    e.currentTarget.style.borderLeftColor = '#fcf9fb';
+                    e.currentTarget.style.borderBottomColor = '#333331';
+                    e.currentTarget.style.borderRightColor = '#333331';
+                  }}
+                >
+                  {button.text}
+                </button>
+              ))
+            )}
           </div>
         )}
         
@@ -311,12 +445,13 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'space-between',
     fontFamily: 'W95Font, MS Sans Serif, sans-serif',
-    fontSize: '14px',
+    fontSize: '16px',
     fontWeight: 600
   },
   titleText: {
-    fontSize: '14px',
-    userSelect: 'none'
+    fontSize: '16px',
+    userSelect: 'none',
+    fontWeight: 'bold'
   },
   closeButton: {
     backgroundColor: '#c0c0c0',
@@ -347,16 +482,20 @@ const styles = {
     padding: '12px',
     fontSize: '12px',
     fontFamily: 'W95Font, MS Sans Serif, sans-serif',
-    flexGrow: 1,
+    flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    gap: '20px'
+    gap: '20px',
+    overflowY: 'auto',
+    minHeight: 0
   },
   buttonRow: {
     display: 'flex',
     gap: '4px',
     justifyContent: 'flex-end',
-    padding: '8px'
+    padding: '8px',
+    flexShrink: 0,
+    backgroundColor: '#c0c0c0'
   },
   button: {
     backgroundColor: '#d6d6d6',
@@ -371,6 +510,15 @@ const styles = {
     cursor: 'pointer',
     minWidth: '75px',
     color: '#000000'
+  },
+  buttonDisabled: {
+    backgroundColor: '#c0c0c0',
+    color: '#808080',
+    cursor: 'default',
+    borderTopColor: '#999999',
+    borderLeftColor: '#999999',
+    borderBottomColor: '#c0c0c0',
+    borderRightColor: '#c0c0c0'
   },
   resizeHandle: {
     position: 'absolute',
@@ -398,6 +546,57 @@ const styles = {
     bottom: '-10px',
     right: '-10px',
     cursor: 'se-resize'
+  },
+  questionBreakdown: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px'
+  },
+  sectionTitle: {
+    fontSize: '18px',
+    fontWeight: 'bold',
+    margin: '0',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif',
+    color: '#000000'
+  },
+  answerText: {
+    fontSize: '18px',
+    margin: '0',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif',
+    color: '#000000',
+    lineHeight: 'normal',
+    whiteSpace: 'pre-wrap'
+  },
+  feedbackTitle: {
+    fontSize: '18px',
+    fontWeight: 'bold',
+    margin: '0',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif',
+    color: '#000000'
+  },
+  feedbackText: {
+    fontSize: '18px',
+    margin: '0',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif',
+    color: '#000000',
+    lineHeight: 'normal',
+    whiteSpace: 'pre-wrap'
+  },
+  strengthsText: {
+    fontSize: '18px',
+    margin: '0',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif',
+    color: '#000000',
+    lineHeight: 'normal',
+    whiteSpace: 'pre-wrap'
+  },
+  growthText: {
+    fontSize: '18px',
+    margin: '0',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif',
+    color: '#000000',
+    lineHeight: 'normal',
+    whiteSpace: 'pre-wrap'
   }
 };
 

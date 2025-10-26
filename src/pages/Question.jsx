@@ -720,7 +720,8 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     flex: 1,
-    overflowY: 'auto'
+    overflowY: 'auto',
+    paddingBottom: '48px'
   },
   scenarioTitle: {
     fontSize: '18px',
