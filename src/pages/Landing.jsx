@@ -35,7 +35,7 @@ const Landing = () => {
   // Panel states for question windows
   const [questionPanel, setQuestionPanel] = useState({ 
     position: null, 
-    size: { width: 431, height: null },
+    size: { width: null, height: null },
     isDragging: false, 
     isResizing: false,
     resizeDirection: null,
@@ -44,7 +44,7 @@ const Landing = () => {
   });
   const [answerPanel, setAnswerPanel] = useState({ 
     position: null, 
-    size: { width: 431, height: null },
+    size: { width: null, height: null },
     isDragging: false, 
     isResizing: false,
     resizeDirection: null,
@@ -53,7 +53,7 @@ const Landing = () => {
   });
   const [feedbackPanel, setFeedbackPanel] = useState({ 
     position: null, 
-    size: { width: 431, height: null },
+    size: { width: null, height: null },
     isDragging: false, 
     isResizing: false,
     resizeDirection: null,
@@ -553,12 +553,18 @@ const Landing = () => {
     if (!showQuestionPanels) return;
     
     const initializePanelPositions = () => {
-      // Position panels horizontally across the screen
-      const panelWidth = 431;
-      const panelHeight = 600; // Default height
-      const gap = 24;
-      const startX = 50;
-      const startY = 50;
+      // Calculate panel dimensions proportional to viewport
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      // Each panel takes about 30% of viewport width, with some spacing
+      const panelWidth = Math.max(300, viewportWidth * 0.28); // Minimum 300px, max 28% of viewport
+      const panelHeight = Math.max(400, viewportHeight * 0.75); // Minimum 400px, max 75% of viewport
+      
+      const gap = Math.max(15, viewportWidth * 0.015); // 1.5% of viewport width for spacing, minimum 15px
+      const totalWidth = (panelWidth * 3) + (gap * 2);
+      const startX = Math.max(10, (viewportWidth - totalWidth) / 2); // Center horizontally, minimum 10px from edge
+      const startY = Math.max(10, viewportHeight * 0.05); // 5% from top, minimum 10px
       
       if (questionPanelRef.current && questionPanel.position === null) {
         setQuestionPanel(prev => ({ 
