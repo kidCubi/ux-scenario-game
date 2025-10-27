@@ -933,6 +933,53 @@ const Landing = () => {
     );
   }
 
+  // Render mobile overall assessment on mobile devices
+  if (isMobile && showOverallAssessment && overallEvaluation) {
+    return (
+      <div style={styles.mobileContainer}>
+        {/* Mobile Header */}
+        <div style={styles.mobileHeader}>
+          <h2 style={styles.mobileTitle}>
+            Overall Assessment
+          </h2>
+        </div>
+
+        {/* Mobile Content Card */}
+        <div style={styles.mobileCard}>
+          <div style={styles.mobileContent}>
+            <div style={styles.mobileLevelSection}>
+              <div style={{...styles.mobileLevelBadge, backgroundColor: getLevelColor(overallEvaluation.level)}}>
+                {overallEvaluation.level}
+              </div>
+            </div>
+            
+            <div style={styles.mobileSummarySection}>
+              {overallEvaluation.summary.split('\n\n').map((paragraph, index) => (
+                <p key={index} style={styles.mobileSummaryParagraph}>{paragraph}</p>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Navigation */}
+        <div style={styles.mobileNavigation}>
+          <button
+            style={styles.mobileSecondaryButton}
+            onClick={handleShowBreakdown}
+          >
+            Show Breakdown
+          </button>
+          <button
+            style={styles.mobilePrimaryButton}
+            onClick={handleBackToDesktop}
+          >
+            Finish
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.desktop} onClick={handleDesktopClick}>
       <div style={styles.iconsContainer}>
@@ -2288,183 +2335,249 @@ const styles = {
     justifyContent: 'flex-end'
   },
 
-  // Mobile-specific styles
+  // Mobile-specific styles (Windows 95 themed)
   mobileContainer: {
     display: 'flex',
     flexDirection: 'column',
     height: '100vh',
-    backgroundColor: '#f5f5f5',
-    fontFamily: 'system-ui, -apple-system, sans-serif'
+    backgroundColor: '#008080',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif'
   },
   mobileHeader: {
-    backgroundColor: '#05007f',
-    color: 'white',
-    padding: '16px',
-    textAlign: 'center',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+    backgroundColor: '#c0c0c0',
+    border: '2px solid',
+    borderTopColor: '#fcf9fb',
+    borderLeftColor: '#fcf9fb',
+    borderBottomColor: '#333331',
+    borderRightColor: '#333331',
+    padding: '8px',
+    margin: '8px',
+    boxShadow: '2px 2px 0px rgba(0, 0, 0, 0.5)'
   },
   mobileTitle: {
-    margin: '0 0 12px 0',
-    fontSize: '18px',
-    fontWeight: '600'
+    backgroundColor: '#05007f',
+    color: 'white',
+    padding: '4px 8px',
+    margin: '0 0 8px 0',
+    fontSize: '16px',
+    fontWeight: '600',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif'
   },
   progressBar: {
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    height: '6px',
-    borderRadius: '3px',
+    backgroundColor: '#c0c0c0',
+    height: '20px',
+    border: '2px solid',
+    borderTopColor: '#333331',
+    borderLeftColor: '#333331',
+    borderBottomColor: '#fcf9fb',
+    borderRightColor: '#fcf9fb',
     overflow: 'hidden'
   },
   progressFill: {
-    backgroundColor: 'white',
+    backgroundColor: '#05007f',
     height: '100%',
     transition: 'width 0.3s ease'
   },
   mobileCard: {
     flex: 1,
-    margin: '16px',
-    backgroundColor: 'white',
-    borderRadius: '12px',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+    margin: '8px',
+    backgroundColor: '#c0c0c0',
+    border: '2px solid',
+    borderTopColor: '#fcf9fb',
+    borderLeftColor: '#fcf9fb',
+    borderBottomColor: '#333331',
+    borderRightColor: '#333331',
+    boxShadow: '2px 2px 0px rgba(0, 0, 0, 0.5)',
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column'
   },
   mobileContent: {
     flex: 1,
-    padding: '20px',
+    padding: '12px',
+    backgroundColor: '#d6d6d6',
+    border: '2px inset',
+    borderTopColor: '#999999',
+    borderLeftColor: '#999999',
+    borderBottomColor: '#fafafa',
+    borderRightColor: '#fafafa',
+    margin: '8px',
     overflowY: 'auto'
   },
   mobileQuestionTitle: {
-    fontSize: '20px',
+    fontSize: '18px',
     fontWeight: '600',
     margin: '0 0 16px 0',
-    color: '#333'
+    color: '#000000',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif'
   },
   mobileStepTitle: {
-    fontSize: '20px',
+    fontSize: '18px',
     fontWeight: '600',
     margin: '0 0 16px 0',
-    color: '#333'
+    color: '#000000',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif'
   },
   mobileScenario: {
-    fontSize: '16px',
-    lineHeight: '1.5',
-    color: '#444',
-    marginBottom: '16px'
+    fontSize: '14px',
+    lineHeight: '1.4',
+    color: '#000000',
+    marginBottom: '16px',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif'
   },
   mobileParagraph: {
     margin: '0 0 12px 0',
-    fontSize: '16px',
-    lineHeight: '1.5'
+    fontSize: '14px',
+    lineHeight: '1.4',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif'
   },
   mobilePrompt: {
-    fontSize: '18px',
+    fontSize: '16px',
     fontWeight: '600',
-    color: '#05007f',
-    margin: '16px 0 0 0'
+    color: '#000000',
+    margin: '16px 0 0 0',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif'
   },
   mobileTextarea: {
     width: '100%',
-    minHeight: '200px',
-    padding: '12px',
-    fontSize: '16px',
-    border: '2px solid #ddd',
-    borderRadius: '8px',
+    minHeight: '150px',
+    padding: '8px',
+    fontSize: '14px',
+    backgroundColor: 'white',
+    border: '2px solid',
+    borderTopColor: '#333331',
+    borderLeftColor: '#333331',
+    borderBottomColor: '#fcf9fb',
+    borderRightColor: '#fcf9fb',
     resize: 'vertical',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
-    lineHeight: '1.5'
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif',
+    lineHeight: '1.4'
   },
   mobileError: {
     color: '#dc3545',
     fontSize: '14px',
-    margin: '8px 0 0 0'
+    margin: '8px 0 0 0',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif'
   },
   mobileFeedback: {
-    fontSize: '16px',
-    lineHeight: '1.5',
-    color: '#444'
+    fontSize: '14px',
+    lineHeight: '1.4',
+    color: '#000000',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif'
   },
   mobileFeedbackHeader: {
-    fontSize: '18px',
+    fontSize: '16px',
     fontWeight: '600',
-    color: '#05007f',
-    margin: '16px 0 8px 0'
+    color: '#000000',
+    margin: '16px 0 8px 0',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif'
   },
   mobileFeedbackItem: {
-    fontSize: '16px',
-    lineHeight: '1.5',
+    fontSize: '14px',
+    lineHeight: '1.4',
     margin: '4px 0',
-    paddingLeft: '8px'
+    paddingLeft: '8px',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif'
   },
   mobileFeedbackText: {
-    fontSize: '16px',
-    lineHeight: '1.5',
-    margin: '8px 0'
+    fontSize: '14px',
+    lineHeight: '1.4',
+    margin: '8px 0',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif'
   },
   mobileNavigation: {
-    padding: '16px',
-    backgroundColor: 'white',
-    borderTop: '1px solid #eee',
+    padding: '8px',
+    backgroundColor: '#c0c0c0',
+    border: '2px solid',
+    borderTopColor: '#fcf9fb',
+    borderLeftColor: '#fcf9fb',
+    borderBottomColor: '#333331',
+    borderRightColor: '#333331',
+    margin: '8px',
     display: 'flex',
-    gap: '12px',
+    gap: '8px',
     justifyContent: 'center'
   },
   mobilePrimaryButton: {
-    backgroundColor: '#05007f',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    padding: '14px 24px',
-    fontSize: '16px',
+    backgroundColor: '#c0c0c0',
+    color: '#000000',
+    border: '2px solid',
+    borderTopColor: '#fcf9fb',
+    borderLeftColor: '#fcf9fb',
+    borderBottomColor: '#333331',
+    borderRightColor: '#333331',
+    padding: '8px 16px',
+    fontSize: '14px',
     fontWeight: '600',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif',
     cursor: 'pointer',
     flex: 1,
     maxWidth: '200px',
-    transition: 'background-color 0.2s'
+    boxShadow: '1px 1px 0px rgba(0, 0, 0, 0.5)'
   },
   mobileSecondaryButton: {
-    backgroundColor: 'transparent',
-    color: '#05007f',
-    border: '2px solid #05007f',
-    borderRadius: '8px',
-    padding: '12px 24px',
-    fontSize: '16px',
+    backgroundColor: '#c0c0c0',
+    color: '#000000',
+    border: '2px solid',
+    borderTopColor: '#fcf9fb',
+    borderLeftColor: '#fcf9fb',
+    borderBottomColor: '#333331',
+    borderRightColor: '#333331',
+    padding: '8px 16px',
+    fontSize: '14px',
     fontWeight: '600',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif',
     cursor: 'pointer',
     flex: 1,
     maxWidth: '200px',
-    transition: 'background-color 0.2s'
+    boxShadow: '1px 1px 0px rgba(0, 0, 0, 0.5)'
   },
   mobileButtonDisabled: {
-    backgroundColor: '#ccc',
-    color: '#666',
-    cursor: 'not-allowed'
+    backgroundColor: '#c0c0c0',
+    color: '#808080',
+    cursor: 'not-allowed',
+    borderTopColor: '#999999',
+    borderLeftColor: '#999999'
   },
   mobileStepIndicators: {
     display: 'flex',
     justifyContent: 'center',
     gap: '8px',
-    padding: '16px',
-    backgroundColor: 'white'
+    padding: '8px',
+    backgroundColor: '#c0c0c0',
+    border: '2px solid',
+    borderTopColor: '#fcf9fb',
+    borderLeftColor: '#fcf9fb',
+    borderBottomColor: '#333331',
+    borderRightColor: '#333331',
+    margin: '8px'
   },
   mobileStepDot: {
-    width: '12px',
-    height: '12px',
-    borderRadius: '50%',
-    backgroundColor: '#ddd',
-    transition: 'background-color 0.2s'
+    width: '16px',
+    height: '16px',
+    backgroundColor: '#c0c0c0',
+    border: '2px solid',
+    borderTopColor: '#333331',
+    borderLeftColor: '#333331',
+    borderBottomColor: '#fcf9fb',
+    borderRightColor: '#fcf9fb'
   },
   mobileStepActive: {
-    backgroundColor: '#05007f'
+    backgroundColor: '#05007f',
+    borderTopColor: '#fcf9fb',
+    borderLeftColor: '#fcf9fb',
+    borderBottomColor: '#333331',
+    borderRightColor: '#333331'
   },
 
-  // Mobile start screen styles
+  // Mobile start screen styles (Windows 95 themed)
   mobileStartContainer: {
     display: 'flex',
     flexDirection: 'column',
     height: '100vh',
-    backgroundColor: '#05007f',
-    fontFamily: 'system-ui, -apple-system, sans-serif'
+    backgroundColor: '#008080',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif',
+    padding: '8px'
   },
   mobileStartHeader: {
     flex: 1,
@@ -2472,21 +2585,29 @@ const styles = {
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: '40px 20px',
-    textAlign: 'center'
+    padding: '20px'
   },
   mobileStartTitle: {
-    color: 'white',
-    fontSize: '32px',
-    fontWeight: '700',
-    margin: '0 0 12px 0',
-    lineHeight: '1.2'
+    backgroundColor: '#c0c0c0',
+    border: '2px solid',
+    borderTopColor: '#fcf9fb',
+    borderLeftColor: '#fcf9fb',
+    borderBottomColor: '#333331',
+    borderRightColor: '#333331',
+    boxShadow: '2px 2px 0px rgba(0, 0, 0, 0.5)',
+    padding: '16px 32px',
+    fontSize: '24px',
+    fontWeight: '600',
+    margin: '0 0 16px 0',
+    color: '#000000',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif'
   },
   mobileStartSubtitle: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: '18px',
+    color: 'white',
+    fontSize: '16px',
     margin: '0',
-    fontWeight: '400'
+    fontWeight: '400',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif'
   },
   mobileStartContent: {
     flex: 1,
@@ -2496,37 +2617,80 @@ const styles = {
     justifyContent: 'center'
   },
   mobileStartCard: {
-    backgroundColor: 'white',
-    borderRadius: '16px',
-    padding: '32px 24px',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+    backgroundColor: '#c0c0c0',
+    border: '2px solid',
+    borderTopColor: '#fcf9fb',
+    borderLeftColor: '#fcf9fb',
+    borderBottomColor: '#333331',
+    borderRightColor: '#333331',
+    boxShadow: '3px 3px 0px rgba(0, 0, 0, 0.5)',
+    padding: '24px',
     textAlign: 'center',
     maxWidth: '400px',
     width: '100%'
   },
   mobileStartCardTitle: {
-    fontSize: '24px',
+    fontSize: '20px',
     fontWeight: '600',
     margin: '0 0 16px 0',
-    color: '#333'
+    color: '#000000',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif'
   },
   mobileStartCardText: {
-    fontSize: '16px',
-    lineHeight: '1.5',
-    color: '#666',
-    margin: '0 0 32px 0'
+    fontSize: '14px',
+    lineHeight: '1.4',
+    color: '#000000',
+    margin: '0 0 24px 0',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif'
   },
   mobileStartButton: {
-    backgroundColor: '#05007f',
-    color: 'white',
-    border: 'none',
-    borderRadius: '12px',
-    padding: '16px 32px',
-    fontSize: '18px',
+    backgroundColor: '#c0c0c0',
+    color: '#000000',
+    border: '2px solid',
+    borderTopColor: '#fcf9fb',
+    borderLeftColor: '#fcf9fb',
+    borderBottomColor: '#333331',
+    borderRightColor: '#333331',
+    padding: '12px 24px',
+    fontSize: '16px',
     fontWeight: '600',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif',
     cursor: 'pointer',
     width: '100%',
-    transition: 'background-color 0.2s'
+    boxShadow: '2px 2px 0px rgba(0, 0, 0, 0.5)'
+  },
+
+  // Mobile overall assessment styles
+  mobileLevelSection: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: '16px'
+  },
+  mobileLevelBadge: {
+    color: 'white',
+    padding: '8px 16px',
+    fontSize: '16px',
+    fontWeight: '600',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif',
+    border: '2px solid',
+    borderTopColor: '#fcf9fb',
+    borderLeftColor: '#fcf9fb',
+    borderBottomColor: '#333331',
+    borderRightColor: '#333331',
+    textAlign: 'center',
+    minWidth: '150px'
+  },
+  mobileSummarySection: {
+    flex: 1,
+    width: '100%'
+  },
+  mobileSummaryParagraph: {
+    fontSize: '14px',
+    fontFamily: 'W95Font, MS Sans Serif, sans-serif',
+    color: '#000000',
+    lineHeight: '1.4',
+    marginBottom: '12px',
+    margin: '0 0 12px 0'
   }
 };
 
