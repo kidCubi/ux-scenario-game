@@ -3,7 +3,25 @@ import Window95Modal from '../components/Window95Modal';
 import { scenarios } from '../data/scenarios';
 import { evaluateAnswer } from '../services/claudeApi';
 
+// Mobile detection hook
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth <= 768 || 'ontouchstart' in window);
+    };
+    
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
+  
+  return isMobile;
+};
+
 const Landing = () => {
+  const isMobile = useIsMobile();
   const [activeIcon, setActiveIcon] = useState(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showExpectedModal, setShowExpectedModal] = useState(false);
@@ -11,6 +29,9 @@ const Landing = () => {
   const [welcomeModalZIndex, setWelcomeModalZIndex] = useState(2000);
   const [welcomeExpectedModalZIndex, setWelcomeExpectedModalZIndex] = useState(2000);
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Mobile-specific state
+  const [currentMobileStep, setCurrentMobileStep] = useState('question'); // 'question', 'answer', 'feedback'
 
   // Game state (moved from AppContext usage)
   const [selectedQuestions, setSelectedQuestions] = useState([]);
@@ -131,10 +152,23 @@ const Landing = () => {
     setSubmitted(false);
     setError('');
     setLoading(false);
+    setCurrentMobileStep('question'); // Reset to question step for mobile
     
     // Reset question content scroll position
     if (questionContentRef.current) {
       questionContentRef.current.scrollTop = 0;
+    }
+  };
+
+  // Mobile navigation functions
+  const goToMobileStep = (step) => {
+    setCurrentMobileStep(step);
+  };
+
+  const handleMobileSubmit = async () => {
+    await handleSubmit();
+    if (!error) {
+      setCurrentMobileStep('feedback');
     }
   };
 
@@ -719,6 +753,185 @@ const Landing = () => {
   const handleDesktopClick = () => {
     setActiveIcon(null);
   };
+
+  // Render mobile interface on mobile devices
+  if (isMobile && showQuestionPanels && selectedQuestions.length > 0) {
+    return (
+      <div style={styles.mobileContainer}>
+        {/* Mobile Header */}
+        <div style={styles.mobileHeader}>
+          <h2 style={styles.mobileTitle}>
+            Question {currentQuestionIndex + 1} of 5
+          </h2>
+          <div style={styles.progressBar}>
+            <div 
+              style={{
+                ...styles.progressFill,
+                width: `${((currentQuestionIndex + 1) / 5) * 100}%`
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Mobile Content Card */}
+        <div style={styles.mobileCard}>
+          {currentMobileStep === 'question' && (
+            <div style={styles.mobileContent}>
+              <h3 style={styles.mobileQuestionTitle}>
+                {selectedQuestions[currentQuestionIndex]?.title}
+              </h3>
+              <div style={styles.mobileScenario}>
+                {selectedQuestions[currentQuestionIndex]?.scenario.split('\n\n').map((paragraph, index) => (
+                  <p key={index} style={styles.mobileParagraph}>{paragraph}</p>
+                ))}
+              </div>
+              <p style={styles.mobilePrompt}>What do you do?</p>
+            </div>
+          )}
+
+          {currentMobileStep === 'answer' && (
+            <div style={styles.mobileContent}>
+              <h3 style={styles.mobileStepTitle}>Your Answer</h3>
+              <textarea
+                style={styles.mobileTextarea}
+                placeholder="Type your response here..."
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                disabled={submitted || loading}
+              />
+              {error && <p style={styles.mobileError}>{error}</p>}
+            </div>
+          )}
+
+          {currentMobileStep === 'feedback' && (
+            <div style={styles.mobileContent}>
+              <h3 style={styles.mobileStepTitle}>Feedback</h3>
+              {loading || overallEvaluationLoading ? (
+                <p style={styles.mobileFeedback}>
+                  {overallEvaluationLoading ? 'Compiling your performance...' : 'Analyzing your response...'}
+                </p>
+              ) : submitted && feedback[currentQuestionIndex] ? (
+                <div style={styles.mobileFeedback}>
+                  {feedback[currentQuestionIndex].split('**').map((part, index) => {
+                    if (index % 2 === 1) {
+                      return <h4 key={index} style={styles.mobileFeedbackHeader}>{part}</h4>;
+                    }
+                    return part.split('\n').map((line, lineIndex) => {
+                      if (line.startsWith('- ')) {
+                        return <p key={`${index}-${lineIndex}`} style={styles.mobileFeedbackItem}>• {line.substring(2)}</p>;
+                      }
+                      return line ? <p key={`${index}-${lineIndex}`} style={styles.mobileFeedbackText}>{line}</p> : null;
+                    });
+                  })}
+                </div>
+              ) : (
+                <p style={styles.mobileFeedback}>No feedback available</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Navigation */}
+        <div style={styles.mobileNavigation}>
+          {currentMobileStep === 'question' && (
+            <button
+              style={styles.mobilePrimaryButton}
+              onClick={() => goToMobileStep('answer')}
+            >
+              Answer Question
+            </button>
+          )}
+
+          {currentMobileStep === 'answer' && (
+            <>
+              <button
+                style={styles.mobileSecondaryButton}
+                onClick={() => goToMobileStep('question')}
+              >
+                Back to Question
+              </button>
+              <button
+                style={{
+                  ...styles.mobilePrimaryButton,
+                  ...((!answer.trim() || loading) ? styles.mobileButtonDisabled : {})
+                }}
+                onClick={handleMobileSubmit}
+                disabled={!answer.trim() || loading}
+              >
+                {loading ? 'Analyzing...' : 'Submit Answer'}
+              </button>
+            </>
+          )}
+
+          {currentMobileStep === 'feedback' && submitted && (
+            <>
+              <button
+                style={styles.mobileSecondaryButton}
+                onClick={() => goToMobileStep('answer')}
+              >
+                Review Answer
+              </button>
+              <button
+                style={styles.mobilePrimaryButton}
+                onClick={handleNext}
+              >
+                {currentQuestionIndex === 4 ? 'View Results' : 'Next Question'}
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Mobile Step Indicators */}
+        <div style={styles.mobileStepIndicators}>
+          <div 
+            style={{
+              ...styles.mobileStepDot,
+              ...(currentMobileStep === 'question' ? styles.mobileStepActive : {})
+            }}
+          />
+          <div 
+            style={{
+              ...styles.mobileStepDot,
+              ...(currentMobileStep === 'answer' ? styles.mobileStepActive : {})
+            }}
+          />
+          <div 
+            style={{
+              ...styles.mobileStepDot,
+              ...(currentMobileStep === 'feedback' ? styles.mobileStepActive : {})
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Render mobile start screen on mobile devices when not in game
+  if (isMobile && !showQuestionPanels) {
+    return (
+      <div style={styles.mobileStartContainer}>
+        <div style={styles.mobileStartHeader}>
+          <h1 style={styles.mobileStartTitle}>UX Designer Assessment</h1>
+          <p style={styles.mobileStartSubtitle}>Practice challenging UX scenarios</p>
+        </div>
+        
+        <div style={styles.mobileStartContent}>
+          <div style={styles.mobileStartCard}>
+            <h2 style={styles.mobileStartCardTitle}>Ready to test your UX skills?</h2>
+            <p style={styles.mobileStartCardText}>
+              You'll answer 5 challenging scenarios and receive AI-powered feedback on your responses.
+            </p>
+            <button 
+              style={styles.mobileStartButton}
+              onClick={handleStart}
+            >
+              Start Assessment
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.desktop} onClick={handleDesktopClick}>
@@ -2073,6 +2286,247 @@ const styles = {
     padding: '8px',
     display: 'flex',
     justifyContent: 'flex-end'
+  },
+
+  // Mobile-specific styles
+  mobileContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100vh',
+    backgroundColor: '#f5f5f5',
+    fontFamily: 'system-ui, -apple-system, sans-serif'
+  },
+  mobileHeader: {
+    backgroundColor: '#05007f',
+    color: 'white',
+    padding: '16px',
+    textAlign: 'center',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+  },
+  mobileTitle: {
+    margin: '0 0 12px 0',
+    fontSize: '18px',
+    fontWeight: '600'
+  },
+  progressBar: {
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    height: '6px',
+    borderRadius: '3px',
+    overflow: 'hidden'
+  },
+  progressFill: {
+    backgroundColor: 'white',
+    height: '100%',
+    transition: 'width 0.3s ease'
+  },
+  mobileCard: {
+    flex: 1,
+    margin: '16px',
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  mobileContent: {
+    flex: 1,
+    padding: '20px',
+    overflowY: 'auto'
+  },
+  mobileQuestionTitle: {
+    fontSize: '20px',
+    fontWeight: '600',
+    margin: '0 0 16px 0',
+    color: '#333'
+  },
+  mobileStepTitle: {
+    fontSize: '20px',
+    fontWeight: '600',
+    margin: '0 0 16px 0',
+    color: '#333'
+  },
+  mobileScenario: {
+    fontSize: '16px',
+    lineHeight: '1.5',
+    color: '#444',
+    marginBottom: '16px'
+  },
+  mobileParagraph: {
+    margin: '0 0 12px 0',
+    fontSize: '16px',
+    lineHeight: '1.5'
+  },
+  mobilePrompt: {
+    fontSize: '18px',
+    fontWeight: '600',
+    color: '#05007f',
+    margin: '16px 0 0 0'
+  },
+  mobileTextarea: {
+    width: '100%',
+    minHeight: '200px',
+    padding: '12px',
+    fontSize: '16px',
+    border: '2px solid #ddd',
+    borderRadius: '8px',
+    resize: 'vertical',
+    fontFamily: 'system-ui, -apple-system, sans-serif',
+    lineHeight: '1.5'
+  },
+  mobileError: {
+    color: '#dc3545',
+    fontSize: '14px',
+    margin: '8px 0 0 0'
+  },
+  mobileFeedback: {
+    fontSize: '16px',
+    lineHeight: '1.5',
+    color: '#444'
+  },
+  mobileFeedbackHeader: {
+    fontSize: '18px',
+    fontWeight: '600',
+    color: '#05007f',
+    margin: '16px 0 8px 0'
+  },
+  mobileFeedbackItem: {
+    fontSize: '16px',
+    lineHeight: '1.5',
+    margin: '4px 0',
+    paddingLeft: '8px'
+  },
+  mobileFeedbackText: {
+    fontSize: '16px',
+    lineHeight: '1.5',
+    margin: '8px 0'
+  },
+  mobileNavigation: {
+    padding: '16px',
+    backgroundColor: 'white',
+    borderTop: '1px solid #eee',
+    display: 'flex',
+    gap: '12px',
+    justifyContent: 'center'
+  },
+  mobilePrimaryButton: {
+    backgroundColor: '#05007f',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    padding: '14px 24px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    flex: 1,
+    maxWidth: '200px',
+    transition: 'background-color 0.2s'
+  },
+  mobileSecondaryButton: {
+    backgroundColor: 'transparent',
+    color: '#05007f',
+    border: '2px solid #05007f',
+    borderRadius: '8px',
+    padding: '12px 24px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    flex: 1,
+    maxWidth: '200px',
+    transition: 'background-color 0.2s'
+  },
+  mobileButtonDisabled: {
+    backgroundColor: '#ccc',
+    color: '#666',
+    cursor: 'not-allowed'
+  },
+  mobileStepIndicators: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '8px',
+    padding: '16px',
+    backgroundColor: 'white'
+  },
+  mobileStepDot: {
+    width: '12px',
+    height: '12px',
+    borderRadius: '50%',
+    backgroundColor: '#ddd',
+    transition: 'background-color 0.2s'
+  },
+  mobileStepActive: {
+    backgroundColor: '#05007f'
+  },
+
+  // Mobile start screen styles
+  mobileStartContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100vh',
+    backgroundColor: '#05007f',
+    fontFamily: 'system-ui, -apple-system, sans-serif'
+  },
+  mobileStartHeader: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: '40px 20px',
+    textAlign: 'center'
+  },
+  mobileStartTitle: {
+    color: 'white',
+    fontSize: '32px',
+    fontWeight: '700',
+    margin: '0 0 12px 0',
+    lineHeight: '1.2'
+  },
+  mobileStartSubtitle: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: '18px',
+    margin: '0',
+    fontWeight: '400'
+  },
+  mobileStartContent: {
+    flex: 1,
+    padding: '20px',
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'center'
+  },
+  mobileStartCard: {
+    backgroundColor: 'white',
+    borderRadius: '16px',
+    padding: '32px 24px',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+    textAlign: 'center',
+    maxWidth: '400px',
+    width: '100%'
+  },
+  mobileStartCardTitle: {
+    fontSize: '24px',
+    fontWeight: '600',
+    margin: '0 0 16px 0',
+    color: '#333'
+  },
+  mobileStartCardText: {
+    fontSize: '16px',
+    lineHeight: '1.5',
+    color: '#666',
+    margin: '0 0 32px 0'
+  },
+  mobileStartButton: {
+    backgroundColor: '#05007f',
+    color: 'white',
+    border: 'none',
+    borderRadius: '12px',
+    padding: '16px 32px',
+    fontSize: '18px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    width: '100%',
+    transition: 'background-color 0.2s'
   }
 };
 
