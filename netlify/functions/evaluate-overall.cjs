@@ -67,7 +67,7 @@ SUMMARY:
 
     const response = await axios.post('https://api.anthropic.com/v1/messages', {
       model: "claude-3-opus-20240229",
-      max_tokens: 2000,
+      max_tokens: 1000,
       messages: [
         {
           role: "user",

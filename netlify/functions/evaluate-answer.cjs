@@ -85,7 +85,7 @@ Keep feedback encouraging but honest for genuine responses. For low-effort respo
 
     const response = await axios.post('https://api.anthropic.com/v1/messages', {
       model: "claude-3-opus-20240229",
-      max_tokens: 1500,
+      max_tokens: 800,
       messages: [
         {
           role: "user",
