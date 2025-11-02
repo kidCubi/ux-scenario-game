@@ -1,4 +1,4 @@
-const axios = require('axios');
+import axios from 'axios';
 
 const headers = {
   'anthropic-version': '2023-06-01',
@@ -6,7 +6,7 @@ const headers = {
   'x-api-key': process.env.CLAUDE_API_KEY
 };
 
-exports.handler = async (event, context) => {
+export const handler = async (event, context) => {
   // Only allow POST requests
   if (event.httpMethod !== 'POST') {
     return {
@@ -51,7 +51,7 @@ exports.handler = async (event, context) => {
 
     prompt += `Based on ALL responses, assign ONE level:
 - Junior Designer: Tactical thinking, missing stakeholder considerations, accepting constraints without questioning
-- Mid Designer: Good tactical skills, some strategic thinking, but inconsistent in challenging assumptions  
+- Mid Designer: Good tactical skills, some strategic thinking, but inconsistent in challenging assumptions
 - Senior Designer: Strong strategic thinking, balances users and business, challenges assumptions, navigates politics
 - Lead Designer: Exceptional strategic thinking, builds alliances, reframes problems, thinks long-term, handles politics masterfully
 
@@ -66,7 +66,7 @@ SUMMARY:
 [2-3 paragraph summary of their overall strengths, patterns in their thinking, and areas for growth. For low-effort candidates, be dry and matter-of-fact.]`;
 
     const response = await axios.post('https://api.anthropic.com/v1/messages', {
-      model: "claude-3-5-sonnet-20241022",
+      model: "claude-3-opus-20240229",
       max_tokens: 2000,
       messages: [
         {

@@ -1,4 +1,4 @@
-const axios = require('axios');
+import axios from 'axios';
 
 const headers = {
   'anthropic-version': '2023-06-01',
@@ -6,7 +6,7 @@ const headers = {
   'x-api-key': process.env.CLAUDE_API_KEY
 };
 
-exports.handler = async (event, context) => {
+export const handler = async (event, context) => {
   // Only allow POST requests
   if (event.httpMethod !== 'POST') {
     return {
@@ -66,7 +66,6 @@ ${userAnswer}
 
 EVALUATION INSTRUCTIONS:
 1. First, assess the quality and effort level of the response:
-   - If the answer is clearly low-effort (like "test", "idk", very short responses, or obvious nonsense), respond with dry, matter-of-fact feedback like "The candidate didn't provide enough information to evaluate their UX thinking process."
    - If the answer is trolling, insulting, or inappropriate, respond with dry, GladOS-style sarcasm like "Fascinating. The candidate appears to have confused this with a different type of assessment entirely."
    - If the answer shows genuine effort and UX thinking, provide normal constructive feedback.
 
@@ -85,7 +84,7 @@ EVALUATION INSTRUCTIONS:
 Keep feedback encouraging but honest for genuine responses. For low-effort responses, be matter-of-fact and dry. For trolling responses, channel GladOS from Portal - dry, slightly condescending, but professionally restrained.`;
 
     const response = await axios.post('https://api.anthropic.com/v1/messages', {
-      model: "claude-3-5-sonnet-20241022",
+      model: "claude-3-opus-20240229",
       max_tokens: 1500,
       messages: [
         {
