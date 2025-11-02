@@ -1,4 +1,4 @@
-import axios from 'axios';
+const axios = require('axios');
 
 const headers = {
   'anthropic-version': '2023-06-01',
@@ -6,7 +6,7 @@ const headers = {
   'x-api-key': process.env.CLAUDE_API_KEY
 };
 
-export const handler = async (event, context) => {
+exports.handler = async (event, context) => {
   // Only allow POST requests
   if (event.httpMethod !== 'POST') {
     return {
