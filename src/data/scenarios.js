@@ -112,6 +112,28 @@ export const scenarios = [
 
     Meanwhile, your competitor just launched a seamlessly consistent cross-platform experience and is gaining market share. The CEO wants a solution but doesn't want to upset either VP. You're caught in the middle.`
   },
+  {
+    id: "pol-6",
+    title: "Failed Feature, Finger Pointing",
+    category: "Political/Organizational",
+    difficulty: "senior",
+    scenario: `Your company shipped a major feature redesign 3 months ago. It's failing: engagement down 25%, support tickets up 40%, bad reviews piling up.
+
+    In the post-mortem meeting:
+    - Product Manager: "Design didn't listen to my concerns about the complexity"
+    - Engineering Lead: "We told Design this would be confusing but they insisted"
+    - Head of Product: Looking at you: "Why didn't design catch this in testing?"
+
+    The truth is more complicated:
+    - You DID test it, but PM cut the research timeline in half to hit a launch date
+    - You DID raise concerns, but were told "we need to ship, we'll iterate later"
+    - Engineering DID push back, but their concerns were about different issues (technical, not UX)
+    - PM changed several design decisions without consulting you after final review
+
+    But in this meeting, you're being positioned as the scapegoat. And you have receipts (Slack messages, emails showing you raised concerns) but pulling them out might make you look defensive and create enemies.
+
+    Your CEO is in the room. Your performance review is in 2 weeks. What do you do?`
+  },
 
   // Ethical/Data Interpretation Scenarios
   {
