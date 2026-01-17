@@ -66,7 +66,7 @@ SUMMARY:
         'x-api-key': process.env.CLAUDE_API_KEY
       },
       body: JSON.stringify({
-        model: "claude-3-opus-20240229",
+        model: "claude-sonnet-4-20250514",
         max_tokens: 1000,
         messages: [{ role: "user", content: prompt }]
       })
