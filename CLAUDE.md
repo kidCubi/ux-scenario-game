@@ -94,3 +94,45 @@ Requires `.env` file with:
 - No user authentication or data storage
 - API responses may take several seconds
 - Error handling for API failures should be considered
+
+---
+
+## Retrospective: Netlify Functions 404 Issue (Jan 2026)
+
+### Problem
+API calls to `/.netlify/functions/evaluate-answer` were returning 404 errors on the deployed Netlify site.
+
+### Debugging Journey
+
+**Initial hypothesis: Functions not detected**
+- Functions weren't appearing in Netlify dashboard
+- Suspected `.cjs` file extension wasn't being recognized
+- Converted from `.cjs` to `.mjs` (ES modules) - didn't fix it
+
+**Second attempt: Wrong function format**
+- Tried converting from v1 Lambda format (`export async function handler`) to v2 modern format (`export default async`)
+- Also replaced axios with native fetch
+- Still got 404
+
+**The breakthrough**
+- Tested the endpoint directly with curl POST request
+- Response body contained: `{"error":"model: claude-3-opus-20240229"}`
+- The 404 was coming FROM the Claude API, not from Netlify
+- The function was working all along!
+
+### Root Cause
+The Claude model `claude-3-opus-20240229` requires special API access. The API key didn't have access to Opus, so Claude's API returned a 404 for the model.
+
+### Solution
+Changed the model from `claude-3-opus-20240229` to `claude-sonnet-4-20250514` in both function files.
+
+### Lessons Learned
+1. **Check the response body, not just the status code** - The 404 status was misleading; the response body revealed the actual error
+2. **Claude model access varies by API key** - Not all models are available to all API keys (Opus requires special access)
+3. **Test endpoints directly with curl** - Browser DevTools showed 404 but didn't reveal the response body clearly
+4. **The v2 function format works fine** - The migration to modern Netlify Functions (export default) was a red herring but is still a good practice
+
+### Files Changed
+- `netlify/functions/evaluate-answer.mjs` - Converted to v2 format, updated model
+- `netlify/functions/evaluate-overall.mjs` - Converted to v2 format, updated model
+- `netlify.toml` - Removed invalid `conditions` syntax from redirect
