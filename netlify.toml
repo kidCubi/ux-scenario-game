@@ -16,6 +16,5 @@
   from = "/*"
   to = "/index.html"
   status = 200
-  conditions = {not = "/.netlify/functions/*"}
 
 # Build trigger comment

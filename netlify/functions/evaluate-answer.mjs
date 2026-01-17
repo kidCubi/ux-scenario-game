@@ -1,4 +1,4 @@
-const axios = require('axios');
+import axios from 'axios';
 
 const headers = {
   'anthropic-version': '2023-06-01',
@@ -6,7 +6,7 @@ const headers = {
   'x-api-key': process.env.CLAUDE_API_KEY
 };
 
-exports.handler = async (event, context) => {
+export async function handler(event, context) {
   // Only allow POST requests
   if (event.httpMethod !== 'POST') {
     return {
@@ -17,7 +17,7 @@ exports.handler = async (event, context) => {
 
   // Basic rate limiting - simple IP-based check
   const clientIP = event.headers['client-ip'] || event.headers['x-forwarded-for'] || 'unknown';
-  
+
   try {
     const { scenario, userAnswer } = JSON.parse(event.body);
 
@@ -36,8 +36,8 @@ exports.handler = async (event, context) => {
         headers: {
           'Access-Control-Allow-Origin': '*'
         },
-        body: JSON.stringify({ 
-          error: 'API key configuration error. Please check environment variables.' 
+        body: JSON.stringify({
+          error: 'API key configuration error. Please check environment variables.'
         })
       };
     }
@@ -50,8 +50,8 @@ exports.handler = async (event, context) => {
         headers: {
           'Access-Control-Allow-Origin': '*'
         },
-        body: JSON.stringify({ 
-          error: 'API key format error. Claude API keys should start with sk-ant-' 
+        body: JSON.stringify({
+          error: 'API key format error. Claude API keys should start with sk-ant-'
         })
       };
     }
@@ -101,28 +101,28 @@ Keep feedback encouraging but honest for genuine responses. For low-effort respo
         'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'POST'
       },
-      body: JSON.stringify({ 
-        feedback: response.data.content[0].text 
+      body: JSON.stringify({
+        feedback: response.data.content[0].text
       })
     };
 
   } catch (error) {
     console.error('Error calling Claude API:', error.response?.data || error.message);
-    
+
     // Return more specific error information
-    const errorMessage = error.response?.status === 401 
+    const errorMessage = error.response?.status === 401
       ? 'Authentication failed. API key may be invalid or missing.'
       : error.response?.data?.error?.message || 'Failed to get feedback. Please try again.';
-    
+
     return {
       statusCode: error.response?.status || 500,
       headers: {
         'Access-Control-Allow-Origin': '*'
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         error: errorMessage,
         details: process.env.NODE_ENV === 'development' ? error.response?.data : undefined
       })
     };
   }
-};
+}

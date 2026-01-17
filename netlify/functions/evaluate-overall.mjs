@@ -1,4 +1,4 @@
-const axios = require('axios');
+import axios from 'axios';
 
 const headers = {
   'anthropic-version': '2023-06-01',
@@ -6,7 +6,7 @@ const headers = {
   'x-api-key': process.env.CLAUDE_API_KEY
 };
 
-exports.handler = async (event, context) => {
+export async function handler(event, context) {
   // Only allow POST requests
   if (event.httpMethod !== 'POST') {
     return {
@@ -33,14 +33,14 @@ exports.handler = async (event, context) => {
         headers: {
           'Access-Control-Allow-Origin': '*'
         },
-        body: JSON.stringify({ 
-          error: 'API key configuration error. Please check environment variables.' 
+        body: JSON.stringify({
+          error: 'API key configuration error. Please check environment variables.'
         })
       };
     }
 
     let prompt = `You are evaluating a UX designer's overall performance across 5 scenario responses. Assign them a level and provide summary feedback.\n\n`;
-    
+
     questionsAndAnswers.forEach((qa, index) => {
       prompt += `SCENARIO ${index + 1}: ${qa.scenario.title}\n`;
       prompt += `${qa.scenario.scenario}\n\n`;
@@ -79,7 +79,7 @@ SUMMARY:
     const responseText = response.data.content[0].text;
     const levelMatch = responseText.match(/LEVEL:\s*(.+)/);
     const summaryMatch = responseText.match(/SUMMARY:\s*([\s\S]+)/);
-    
+
     const evaluation = {
       level: levelMatch ? levelMatch[1].trim() : 'Mid Designer',
       summary: summaryMatch ? summaryMatch[1].trim() : responseText
@@ -102,9 +102,9 @@ SUMMARY:
       headers: {
         'Access-Control-Allow-Origin': '*'
       },
-      body: JSON.stringify({ 
-        error: 'Failed to get overall evaluation. Please try again.' 
+      body: JSON.stringify({
+        error: 'Failed to get overall evaluation. Please try again.'
       })
     };
   }
-};
+}
