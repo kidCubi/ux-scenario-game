@@ -1,59 +1,44 @@
-import axios from 'axios';
-
-const headers = {
-  'anthropic-version': '2023-06-01',
-  'content-type': 'application/json',
-  'x-api-key': process.env.CLAUDE_API_KEY
-};
-
-export async function handler(event, context) {
-  // Only allow POST requests
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: 'Method not allowed' })
-    };
+export default async (request, context) => {
+  // Handle CORS preflight
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+      }
+    });
   }
 
-  // Basic rate limiting - simple IP-based check
-  const clientIP = event.headers['client-ip'] || event.headers['x-forwarded-for'] || 'unknown';
+  // Only allow POST requests
+  if (request.method !== 'POST') {
+    return Response.json({ error: 'Method not allowed' }, { status: 405 });
+  }
 
   try {
-    const { scenario, userAnswer } = JSON.parse(event.body);
+    const { scenario, userAnswer } = await request.json();
 
     if (!scenario || !userAnswer) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Missing scenario or userAnswer' })
-      };
+      return Response.json({ error: 'Missing scenario or userAnswer' }, { status: 400 });
     }
 
-    // Debug: Check if API key is available
+    // Check if API key is available
     if (!process.env.CLAUDE_API_KEY) {
       console.error('CLAUDE_API_KEY environment variable is not set');
-      return {
-        statusCode: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          error: 'API key configuration error. Please check environment variables.'
-        })
-      };
+      return Response.json(
+        { error: 'API key configuration error. Please check environment variables.' },
+        { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } }
+      );
     }
 
-    // Debug: Check API key format
+    // Check API key format
     if (!process.env.CLAUDE_API_KEY.startsWith('sk-ant-')) {
       console.error('CLAUDE_API_KEY format appears invalid');
-      return {
-        statusCode: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          error: 'API key format error. Claude API keys should start with sk-ant-'
-        })
-      };
+      return Response.json(
+        { error: 'API key format error. Claude API keys should start with sk-ant-' },
+        { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } }
+      );
     }
 
     const prompt = `You are evaluating a UX designer's response to a scenario. Analyze their thinking and provide constructive feedback.
@@ -83,46 +68,50 @@ EVALUATION INSTRUCTIONS:
 
 Keep feedback encouraging but honest for genuine responses. For low-effort responses, be matter-of-fact and dry. For trolling responses, channel GladOS from Portal - dry, slightly condescending, but professionally restrained.`;
 
-    const response = await axios.post('https://api.anthropic.com/v1/messages', {
-      model: "claude-3-opus-20240229",
-      max_tokens: 800,
-      messages: [
-        {
-          role: "user",
-          content: prompt
-        }
-      ]
-    }, { headers });
-
-    return {
-      statusCode: 200,
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
       headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST'
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'x-api-key': process.env.CLAUDE_API_KEY
       },
       body: JSON.stringify({
-        feedback: response.data.content[0].text
+        model: "claude-3-opus-20240229",
+        max_tokens: 800,
+        messages: [{ role: "user", content: prompt }]
       })
-    };
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Claude API error:', errorData);
+      const errorMessage = response.status === 401
+        ? 'Authentication failed. API key may be invalid or missing.'
+        : errorData?.error?.message || 'Failed to get feedback. Please try again.';
+      return Response.json(
+        { error: errorMessage },
+        { status: response.status, headers: { 'Access-Control-Allow-Origin': '*' } }
+      );
+    }
+
+    const data = await response.json();
+
+    return Response.json(
+      { feedback: data.content[0].text },
+      {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Allow-Methods': 'POST'
+        }
+      }
+    );
 
   } catch (error) {
-    console.error('Error calling Claude API:', error.response?.data || error.message);
-
-    // Return more specific error information
-    const errorMessage = error.response?.status === 401
-      ? 'Authentication failed. API key may be invalid or missing.'
-      : error.response?.data?.error?.message || 'Failed to get feedback. Please try again.';
-
-    return {
-      statusCode: error.response?.status || 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: JSON.stringify({
-        error: errorMessage,
-        details: process.env.NODE_ENV === 'development' ? error.response?.data : undefined
-      })
-    };
+    console.error('Error calling Claude API:', error);
+    return Response.json(
+      { error: 'Failed to get feedback. Please try again.' },
+      { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } }
+    );
   }
-}
+};

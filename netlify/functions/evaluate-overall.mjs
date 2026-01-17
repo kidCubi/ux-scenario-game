@@ -1,42 +1,35 @@
-import axios from 'axios';
+export default async (request, context) => {
+  // Handle CORS preflight
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+      }
+    });
+  }
 
-const headers = {
-  'anthropic-version': '2023-06-01',
-  'content-type': 'application/json',
-  'x-api-key': process.env.CLAUDE_API_KEY
-};
-
-export async function handler(event, context) {
   // Only allow POST requests
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: 'Method not allowed' })
-    };
+  if (request.method !== 'POST') {
+    return Response.json({ error: 'Method not allowed' }, { status: 405 });
   }
 
   try {
-    const { questionsAndAnswers } = JSON.parse(event.body);
+    const { questionsAndAnswers } = await request.json();
 
     if (!questionsAndAnswers || !Array.isArray(questionsAndAnswers)) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Invalid questionsAndAnswers data' })
-      };
+      return Response.json({ error: 'Invalid questionsAndAnswers data' }, { status: 400 });
     }
 
-    // Debug: Check if API key is available
+    // Check if API key is available
     if (!process.env.CLAUDE_API_KEY) {
       console.error('CLAUDE_API_KEY environment variable is not set');
-      return {
-        statusCode: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          error: 'API key configuration error. Please check environment variables.'
-        })
-      };
+      return Response.json(
+        { error: 'API key configuration error. Please check environment variables.' },
+        { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } }
+      );
     }
 
     let prompt = `You are evaluating a UX designer's overall performance across 5 scenario responses. Assign them a level and provide summary feedback.\n\n`;
@@ -65,18 +58,31 @@ LEVEL: [Junior Designer/Mid Designer/Senior Designer/Lead Designer]
 SUMMARY:
 [2-3 paragraph summary of their overall strengths, patterns in their thinking, and areas for growth. For low-effort candidates, be dry and matter-of-fact.]`;
 
-    const response = await axios.post('https://api.anthropic.com/v1/messages', {
-      model: "claude-3-opus-20240229",
-      max_tokens: 1000,
-      messages: [
-        {
-          role: "user",
-          content: prompt
-        }
-      ]
-    }, { headers });
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'x-api-key': process.env.CLAUDE_API_KEY
+      },
+      body: JSON.stringify({
+        model: "claude-3-opus-20240229",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
 
-    const responseText = response.data.content[0].text;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Claude API error:', errorData);
+      return Response.json(
+        { error: 'Failed to get overall evaluation. Please try again.' },
+        { status: response.status, headers: { 'Access-Control-Allow-Origin': '*' } }
+      );
+    }
+
+    const data = await response.json();
+    const responseText = data.content[0].text;
     const levelMatch = responseText.match(/LEVEL:\s*(.+)/);
     const summaryMatch = responseText.match(/SUMMARY:\s*([\s\S]+)/);
 
@@ -85,26 +91,22 @@ SUMMARY:
       summary: summaryMatch ? summaryMatch[1].trim() : responseText
     };
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST'
-      },
-      body: JSON.stringify({ evaluation })
-    };
+    return Response.json(
+      { evaluation },
+      {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Allow-Methods': 'POST'
+        }
+      }
+    );
 
   } catch (error) {
     console.error('Error calling Claude API:', error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: JSON.stringify({
-        error: 'Failed to get overall evaluation. Please try again.'
-      })
-    };
+    return Response.json(
+      { error: 'Failed to get overall evaluation. Please try again.' },
+      { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } }
+    );
   }
-}
+};
