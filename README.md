@@ -1,4 +1,4 @@
-> Try it out hereü https://uxatthefirm.com/ [https://uxatthefirm.com/]
+> Try it out here! https://uxatthefirm.com
 
 # UX Designer Scenario Practice Game
 
